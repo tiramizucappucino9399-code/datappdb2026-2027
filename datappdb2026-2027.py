@@ -2,45 +2,36 @@ import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
 import os
 from datetime import date
 
 # --- 1. KONFIGURASI SISTEM ---
-FOLDER_DRIVE_ID = "1VKgQOAlc1WeZlTRIc4AlotswD0EQjCuI" 
 SHEET_NAME = "Database PPDB AL IRSYAD KEDIRI" 
 
 # --- 2. FUNGSI KONEKSI CLOUD ---
 @st.cache_resource
 def init_google_services():
+    # Scope sekarang hanya untuk Google Sheets
     scope = [
         'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive',
         'https://spreadsheets.google.com/feeds'
     ]
     
     try:
         if "gcp_service_account" in st.secrets:
-            # Mode Streamlit Cloud (Gunakan ini jika upload ke GitHub/Streamlit)
+            # Mode Streamlit Cloud
             creds_dict = dict(st.secrets["gcp_service_account"])
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         else:
-            # Mode Lokal (Gunakan ini jika running di laptop sendiri)
+            # Mode Lokal
             creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
         
         # Koneksi Sheets
         client = gspread.authorize(creds)
-        
-        # Koneksi Drive
-        gauth = GoogleAuth()
-        gauth.credentials = creds
-        drive = GoogleDrive(gauth)
-        
-        return client, drive
+        return client
     except Exception as e:
         st.error(f"Koneksi Gagal: {e}")
-        return None, None
+        return None
 
 # --- 3. TAMPILAN ANTARMUKA ---
 st.set_page_config(page_title="PPDB KB-RA AL IRSYAD KEDIRI", page_icon="🏫", layout="wide")
@@ -57,7 +48,7 @@ st.markdown("""
     <br>
 """, unsafe_allow_html=True)
 
-client, drive = init_google_services()
+client = init_google_services()
 
 if client:
     st.sidebar.success("✅ Database Terhubung")
@@ -77,7 +68,15 @@ if menu == "📝 Pendaftaran Murid":
         nis_lokal = c1.text_input("NIS Lokal")
         kwn = c2.text_input("Kewarganegaraan", value="WNI")
         nik_s = c1.text_input("NIK Siswa")
-        tgl_s = c2.date_input("Tanggal Lahir", min_value=date(2015,1,1))
+        
+        # RENTANG TANGGAL LAHIR: 1945 - 2100
+        tgl_s = c2.date_input(
+            "Tanggal Lahir Siswa", 
+            value=date(2020, 1, 1),
+            min_value=date(1945, 1, 1), 
+            max_value=date(2100, 12, 31)
+        )
+        
         tmp_s = c1.text_input("Tempat Lahir")
         jk = c2.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
         saudara = c1.number_input("Jumlah Saudara", min_value=0, step=1)
@@ -85,7 +84,6 @@ if menu == "📝 Pendaftaran Murid":
         agama = c1.selectbox("Agama", ["Islam"])
         no_kk = c1.text_input("No. Kartu Keluarga (KK)")
         kepala_kk = c2.text_input("Nama Kepala Keluarga")
-        file_kk = st.file_uploader("Upload KK (PDF, JPG, PNG) - Max 2MB", type=['pdf', 'jpg', 'png'])
 
         st.markdown("<hr>", unsafe_allow_html=True)
         st.subheader("👨‍👩‍👧‍👦 II. DATA KELUARGA")
@@ -94,7 +92,8 @@ if menu == "📝 Pendaftaran Murid":
             n_ayah = st.text_input("Nama Ayah")
             nik_a = st.text_input("NIK Ayah")
             tmp_a = st.text_input("Tempat Lahir Ayah")
-            tgl_a = st.date_input("Tanggal Lahir Ayah", key="ay1")
+            # Tanggal Lahir Ayah: 1945 - 2100
+            tgl_a = st.date_input("Tanggal Lahir Ayah", key="ay1", min_value=date(1945,1,1), max_value=date(2100,12,31))
             pend_a = st.selectbox("Pendidikan Ayah", ["SD", "SMP", "SMA/K", "D3", "S1", "S2", "S3"])
             pek_a = st.text_input("Pekerjaan Utama Ayah")
             gaji_a = st.number_input("Penghasilan Ayah (Rp)", min_value=0, step=100000)
@@ -102,7 +101,8 @@ if menu == "📝 Pendaftaran Murid":
             n_ibu = st.text_input("Nama Ibu")
             nik_i = st.text_input("NIK Ibu")
             tmp_i = st.text_input("Tempat Lahir Ibu")
-            tgl_i = st.date_input("Tanggal Lahir Ibu", key="ib1")
+            # Tanggal Lahir Ibu: 1945 - 2100
+            tgl_i = st.date_input("Tanggal Lahir Ibu", key="ib1", min_value=date(1945,1,1), max_value=date(2100,12,31))
             pend_i = st.selectbox("Pendidikan Ibu", ["SD", "SMP", "SMA/K", "D3", "S1", "S2", "S3"])
             pek_i = st.text_input("Pekerjaan Utama Ibu")
             gaji_i = st.number_input("Penghasilan Ibu (Rp)", min_value=0, step=100000)
@@ -121,44 +121,25 @@ if menu == "📝 Pendaftaran Murid":
         btn_submit = st.form_submit_button("✅ KIRIM DATA PENDAFTARAN")
 
     if btn_submit:
-        if file_kk and nama and nik_s:
+        if nama and nik_s and no_kk:
             try:
-                with st.spinner("Sedang memproses data..."):
-                    # 1. Simpan file sementara di sistem
-                    ext = os.path.splitext(file_kk.name)[1]
-                    fname = f"KK_{nama}_{nik_s}{ext}".replace(" ", "_")
-                    with open(fname, "wb") as f:
-                        f.write(file_kk.getbuffer())
-
-                    # 2. Upload ke Google Drive (DENGAN PERBAIKAN QUOTA)
-                    gfile = drive.CreateFile({'title': fname, 'parents': [{'id': FOLDER_DRIVE_ID}]})
-                    gfile.SetContentFile(fname)
-                    
-                    # BARIS PENTING: Menggunakan kuota folder tujuan, bukan kuota robot
-                    gfile.Upload(param={'supportsAllDrives': True}) 
-                    
-                    gfile.InsertPermission({'type': 'anyone', 'value': 'anyone', 'role': 'reader'})
-                    link_kk = gfile['alternateLink']
-                    
-                    # Hapus file sementara
-                    if os.path.exists(fname): os.remove(fname)
-
-                    # 3. Simpan ke Google Sheets
+                with st.spinner("Sedang menyimpan data ke Google Sheets..."):
+                    # Simpan ke Google Sheets
                     sheet = client.open(SHEET_NAME).sheet1
                     data_final = [
                         nama, nisn, nis_lokal, kwn, nik_s, str(tgl_s), tmp_s, jk, saudara, anak_ke, agama,
                         no_kk, kepala_kk, n_ayah, nik_a, tmp_a, str(tgl_a), pend_a, pek_a, gaji_a,
                         n_ibu, nik_i, tmp_i, str(tgl_i), pend_i, pek_i, gaji_i,
-                        status_rmh, prov, kota, kec, desa, alamat, pos, link_kk, str(date.today())
+                        status_rmh, prov, kota, kec, desa, alamat, pos, str(date.today())
                     ]
                     sheet.append_row(data_final)
                     
                     st.balloons()
-                    st.success(f"Alhamdulillah, data {nama} berhasil terkirim!")
+                    st.success(f"Alhamdulillah, data pendaftaran ananda {nama} berhasil disimpan!")
             except Exception as e:
-                st.error(f"Gagal Mengunggah: {e}. Pastikan Anda sudah membagikan folder Drive ke email Service Account.")
+                st.error(f"Terjadi kesalahan saat menyimpan: {e}")
         else:
-            st.warning("⚠️ Mohon isi Nama, NIK, dan Upload file KK!")
+            st.warning("⚠️ Mohon lengkapi data wajib: Nama Lengkap, NIK Siswa, dan No. KK!")
 
 # --- MODUL 2: DASHBOARD ADMIN ---
 elif menu == "📊 Dashboard Admin":
@@ -166,10 +147,14 @@ elif menu == "📊 Dashboard Admin":
     try:
         sheet = client.open(SHEET_NAME).sheet1
         records = sheet.get_all_records()
+        
         if records:
             data = pd.DataFrame(records)
             st.dataframe(data, use_container_width=True)
+            
+            csv = data.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Download Excel (CSV)", data=csv, file_name=f"PPDB_Export_{date.today()}.csv", mime="text/csv")
         else:
-            st.info("Belum ada data.")
+            st.info("Belum ada data di database.")
     except Exception as e:
-        st.error(f"Gagal memuat: {e}")
+        st.error(f"Gagal memuat data: {e}")
