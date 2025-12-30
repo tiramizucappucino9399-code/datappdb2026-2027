@@ -22,11 +22,11 @@ def init_google_services():
     
     try:
         if "gcp_service_account" in st.secrets:
-            # Mode Streamlit Cloud
+            # Mode Streamlit Cloud (Gunakan ini jika upload ke GitHub/Streamlit)
             creds_dict = dict(st.secrets["gcp_service_account"])
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         else:
-            # Mode Lokal
+            # Mode Lokal (Gunakan ini jika running di laptop sendiri)
             creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
         
         # Koneksi Sheets
@@ -124,26 +124,26 @@ if menu == "📝 Pendaftaran Murid":
         if file_kk and nama and nik_s:
             try:
                 with st.spinner("Sedang memproses data..."):
-                    # 1. Proses File & Upload ke Drive
+                    # 1. Simpan file sementara di sistem
                     ext = os.path.splitext(file_kk.name)[1]
                     fname = f"KK_{nama}_{nik_s}{ext}".replace(" ", "_")
-                    
                     with open(fname, "wb") as f:
                         f.write(file_kk.getbuffer())
-                    
-                    # PERBAIKAN: Menambahkan supportsAllDrives untuk mengatasi quota 0 service account
+
+                    # 2. Upload ke Google Drive (DENGAN PERBAIKAN QUOTA)
                     gfile = drive.CreateFile({'title': fname, 'parents': [{'id': FOLDER_DRIVE_ID}]})
                     gfile.SetContentFile(fname)
+                    
+                    # BARIS PENTING: Menggunakan kuota folder tujuan, bukan kuota robot
                     gfile.Upload(param={'supportsAllDrives': True}) 
                     
                     gfile.InsertPermission({'type': 'anyone', 'value': 'anyone', 'role': 'reader'})
                     link_kk = gfile['alternateLink']
                     
-                    # Hapus file lokal setelah upload
-                    if os.path.exists(fname):
-                        os.remove(fname)
+                    # Hapus file sementara
+                    if os.path.exists(fname): os.remove(fname)
 
-                    # 2. Simpan ke Google Sheets
+                    # 3. Simpan ke Google Sheets
                     sheet = client.open(SHEET_NAME).sheet1
                     data_final = [
                         nama, nisn, nis_lokal, kwn, nik_s, str(tgl_s), tmp_s, jk, saudara, anak_ke, agama,
@@ -154,11 +154,11 @@ if menu == "📝 Pendaftaran Murid":
                     sheet.append_row(data_final)
                     
                     st.balloons()
-                    st.success(f"Alhamdulillah, pendaftaran ananda {nama} berhasil disimpan!")
+                    st.success(f"Alhamdulillah, data {nama} berhasil terkirim!")
             except Exception as e:
-                st.error(f"Terjadi kesalahan: {e}")
+                st.error(f"Gagal Mengunggah: {e}. Pastikan Anda sudah membagikan folder Drive ke email Service Account.")
         else:
-            st.warning("⚠️ Mohon lengkapi Nama, NIK, dan Upload file KK!")
+            st.warning("⚠️ Mohon isi Nama, NIK, dan Upload file KK!")
 
 # --- MODUL 2: DASHBOARD ADMIN ---
 elif menu == "📊 Dashboard Admin":
@@ -166,27 +166,10 @@ elif menu == "📊 Dashboard Admin":
     try:
         sheet = client.open(SHEET_NAME).sheet1
         records = sheet.get_all_records()
-        
         if records:
             data = pd.DataFrame(records)
-            
-            # Statistik
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Total Pendaftar", len(data))
-            if 'Jenis Kelamin' in data.columns:
-                m2.metric("Laki-laki", len(data[data['Jenis Kelamin'] == 'Laki-laki']))
-                m3.metric("Perempuan", len(data[data['Jenis Kelamin'] == 'Perempuan']))
-
-            st.markdown("---")
-            search = st.text_input("🔍 Cari Nama Murid...")
-            if search:
-                data = data[data['Nama Lengkap'].astype(str).str.contains(search, case=False)]
-            
             st.dataframe(data, use_container_width=True)
-            
-            csv = data.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download Excel (CSV)", data=csv, file_name=f"PPDB_Export_{date.today()}.csv", mime="text/csv")
         else:
-            st.info("Belum ada data di database.")
+            st.info("Belum ada data.")
     except Exception as e:
-        st.error(f"Gagal memuat data: {e}")
+        st.error(f"Gagal memuat: {e}")
