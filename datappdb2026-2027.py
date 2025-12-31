@@ -18,8 +18,9 @@ ALAMAT_SEKOLAH = {
     "Jalan": "Jl. Letjend Suprapto No.21, Kel. Pakelan, Kec. Kota",
     "Kota": "Kota Kediri, Jawa Timur",
     "Kodepos": "64129",
-    # Link Embed Google Maps (Iframe)
-    "Maps_Embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3952.97343248671!2d112.0125799!3d-7.8137953!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e785718a38f329b%3A0xc3b59363554625f2!2sRA%20Al%20Irsyad%20Al%20Islamiyyah%20Kota%20Kediri!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid"
+    "Telepon": "(0354) 682524",
+    # Link Embed Google Maps (Pastikan menggunakan link embed/iframe)
+    "Maps_Embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m12!1m12!1m3!1d3952.66585141203!2d112.012526!3d-7.825217!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e78570420000001%3A0x6b80170a4a58b27!2sKB-RA%20AL%20IRSYAD%20AL%20ISLAMIIYAH!5e0!3m2!1sid!2sid!4v1700000000000"
 }
 
 # --- KLASTER GAMBAR (LOGO & GALERI) ---
@@ -43,8 +44,7 @@ LOGO_BASE64 = get_image_base64(LOGO_LINK)
 # Tambahkan link foto kegiatan Anda di sini (Pastikan sharing "Anyone with the link can view")
 LIST_FOTO_KEGIATAN = [
     "https://drive.google.com/file/d/LINK_FOTO_1/view",
-    "https://drive.google.com/file/d/LINK_FOTO_2/view",
-    "https://drive.google.com/file/d/LINK_FOTO_3/view"
+    "https://drive.google.com/file/d/LINK_FOTO_2/view"
 ]
 
 # --- 2. FUNGSI KONEKSI GOOGLE SHEETS ---
@@ -61,7 +61,7 @@ def init_google_sheets():
     except Exception as e:
         st.error(f"Koneksi Gagal: {e}"); return None
 
-# --- 3. STANDARISASI KOLOM (37 KOLOM) ---
+# --- 3. STANDARISASI KOLOM (37 KOLOM LENGKAP) ---
 KOLOM_DATABASE = [
     "No. Registrasi", "Nama Lengkap", "NISN", "NIS Lokal", "Kewarganegaraan", "NIK Siswa", 
     "Tanggal Lahir", "Tempat Lahir", "Jenis Kelamin", "Jumlah Saudara", "Anak Ke", 
@@ -84,28 +84,30 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# Header
+# Header Utama
 if LOGO_BASE64:
     st.markdown(f'<div style="text-align: center;"><img src="data:image/png;base64,{LOGO_BASE64}" width="120"></div>', unsafe_allow_html=True)
 st.markdown(f'<div class="main-header"><h1>SISTEM INFORMASI PPDB ONLINE</h1><h3>{ALAMAT_SEKOLAH["Nama"]}</h3><p>Tahun Ajaran 2026-2027</p></div>', unsafe_allow_html=True)
 
-# --- SIDEBAR (Logo, Navigasi, Alamat, Peta) ---
-if LOGO_BASE64: st.sidebar.image(f"data:image/png;base64,{LOGO_BASE64}", use_container_width=True)
-st.sidebar.markdown("---")
-menu = st.sidebar.radio("MENU UTAMA", ["📝 Pendaftaran Murid", "🖼️ Galeri Sekolah", "📊 Dashboard Admin"])
+# --- SIDEBAR (Perbaikan Navigasi, Alamat & Peta) ---
+with st.sidebar:
+    if LOGO_BASE64:
+        st.image(f"data:image/png;base64,{LOGO_BASE64}", use_container_width=True)
+    st.markdown("---")
+    menu = st.radio("MENU UTAMA", ["📝 Pendaftaran Murid", "🖼️ Galeri Sekolah", "📊 Dashboard Admin"])
+    
+    st.markdown(f"""
+        <div class="contact-box">
+            <b>📍 Lokasi & Kontak Sekolah:</b><br>
+            {ALAMAT_SEKOLAH["Jalan"]}<br>
+            {ALAMAT_SEKOLAH["Kota"]}, {ALAMAT_SEKOLAH["Kodepos"]}<br>
+            <b>Telepon:</b> {ALAMAT_SEKOLAH["Telepon"]}
+        </div>
+    """, unsafe_allow_html=True)
 
-st.sidebar.markdown(f"""
-    <div class="contact-box">
-        <b>📍 Lokasi & Kontak Sekolah:</b><br>
-        {ALAMAT_SEKOLAH["Jalan"]}<br>
-        {ALAMAT_SEKOLAH["Kota"]}, {ALAMAT_SEKOLAH["Kodepos"]}<br>
-        <b>Telepon:</b> (0354) 682524
-    </div>
-""", unsafe_allow_html=True)
-
-# Peta Interaktif di Sidebar
-st.sidebar.markdown("<b>🗺️ Peta Lokasi:</b>", unsafe_allow_html=True)
-st.sidebar.components.v1.iframe(ALAMAT_SEKOLAH["Maps_Embed"], height=250)
+    st.markdown("<b>🗺️ Peta Lokasi:</b>", unsafe_allow_html=True)
+    # PERBAIKAN DI SINI: Pemanggilan iframe yang benar
+    st.components.v1.iframe(ALAMAT_SEKOLAH["Maps_Embed"], height=250)
 
 client = init_google_sheets()
 if not client: st.stop()
@@ -113,9 +115,9 @@ if not client: st.stop()
 # --- MODUL 1: PENDAFTARAN ---
 if menu == "📝 Pendaftaran Murid":
     with st.form("ppdb_form", clear_on_submit=True):
-        st.markdown('<div class="section-header">📑 HALAMAN 1: DATA SISWA (1945-2100)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📑 HALAMAN 1: DATA SISWA (Rentang 1945-2100)</div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
-        nama = c1.text_input("Nama Lengkap*")
+        nama = c1.text_input("Nama Lengkap Siswa*")
         nisn = c2.text_input("NISN")
         nis_lokal = c1.text_input("NIS Lokal")
         kwn = c2.text_input("Kewarganegaraan", value="WNI")
@@ -131,7 +133,7 @@ if menu == "📝 Pendaftaran Murid":
         no_wa = c2.text_input("Nomor WhatsApp Wali (Mulai 08...)*")
 
         st.markdown('<div class="section-header">👨‍👩‍👧‍👦 HALAMAN 2: DATA KELUARGA</div>', unsafe_allow_html=True)
-        t_ay, t_ib = st.tabs(["Data Ayah Kandung", "Data Ibu Kandung"])
+        t_ay, t_ib = st.tabs(["Data Ayah", "Data Ibu"])
         with t_ay:
             ay1, ay2 = st.columns(2)
             n_ayah, nik_a = ay1.text_input("Nama Ayah"), ay2.text_input("NIK Ayah")
@@ -151,7 +153,6 @@ if menu == "📝 Pendaftaran Murid":
         status_rmh = st.selectbox("Status Rumah", ["Milik Sendiri", "Kontrak", "Lainnya"])
         al1, al2 = st.columns(2)
         prov, kota = al1.text_input("Provinsi", value="Jawa Timur"), al2.text_input("Kota", value="Kediri")
-        kec, desa = al1.text_input("Kecamatan"), al2.text_input("Desa")
         alamat, pos = st.text_area("Alamat Lengkap"), st.text_input("Kode Pos")
 
         if st.form_submit_button("✅ DAFTAR SEKARANG"):
@@ -160,15 +161,20 @@ if menu == "📝 Pendaftaran Murid":
                     sheet = client.open(SHEET_NAME).sheet1
                     reg_id = f"REG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                     wa_fix = no_wa.replace("08", "628", 1) if no_wa.startswith("08") else no_wa
+                    
+                    # Data final (37 Kolom)
                     data_final = [
-                        reg_id, nama, nisn, nis_lokal, kwn, f"'{nik_s}", str(tgl_s), tmp_s, jk, saudara, anak_ke, agama, f"'{no_kk}", kepala_kk, wa_fix,
-                        n_ayah, f"'{nik_a}", tmp_a, str(tgl_a), pend_a, pek_a, gaji_a, n_ibu, f"'{nik_i}", tmp_i, str(tgl_i), pend_i, pek_i, gaji_i,
-                        status_rmh, prov, kota, kec, desa, alamat, pos, datetime.now().strftime("%Y-%m-%d"), "Belum Diverifikasi"
+                        reg_id, nama, nisn, nis_lokal, kwn, f"'{nik_s}", str(tgl_s), tmp_s, jk, saudara, anak_ke, 
+                        agama, f"'{no_kk}", kepala_kk, wa_fix, n_ayah, f"'{nik_a}", tmp_a, str(tgl_a), pend_a, 
+                        pek_a, gaji_a, n_ibu, f"'{nik_i}", tmp_i, str(tgl_i), pend_i, pek_i, gaji_i,
+                        status_rmh, prov, kota, "", "", alamat, pos, datetime.now().strftime("%Y-%m-%d"), "Belum Diverifikasi"
                     ]
                     sheet.append_row(data_final)
-                    st.success(f"Alhamdulillah! No Reg: {reg_id}")
+                    st.success(f"Berhasil! No Reg: {reg_id}")
+                    # Konfirmasi WA
                     pesan = urllib.parse.quote(f"Pendaftaran Ananda {nama} berhasil.\nNo Reg: {reg_id}")
                     st.markdown(f'<a href="https://wa.me/{wa_fix}?text={pesan}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; padding:15px; border-radius:8px; border:none; font-weight:bold; cursor:pointer;">📲 KIRIM KONFIRMASI WA</button></a>', unsafe_allow_html=True)
+                    st.balloons()
                 except Exception as e: st.error(f"Error: {e}")
             else: st.warning("Nama, NIK, dan WA wajib diisi!")
 
@@ -192,8 +198,8 @@ elif menu == "📊 Dashboard Admin":
     
     try:
         sheet = client.open(SHEET_NAME).sheet1
-        df = pd.DataFrame(sheet.get_all_records()).astype(str)
-        tab1, tab2 = st.tabs(["🔍 Monitoring Data", "📥 Import & Template"])
+        df = pd.DataFrame(sheet.get_all_records()).astype(str).replace('nan', '')
+        tab1, tab2 = st.tabs(["🔍 Monitoring Data", "📥 Import & Template Excel"])
         with tab1:
             st.dataframe(df, use_container_width=True)
             st.download_button("📥 Ekspor CSV", df.to_csv(index=False).encode('utf-8'), "Data_PPDB.csv", "text/csv")
@@ -201,7 +207,7 @@ elif menu == "📊 Dashboard Admin":
             buf = io.BytesIO()
             with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
                 pd.DataFrame(columns=KOLOM_DATABASE).to_excel(wr, index=False)
-            st.download_button("📥 Download Template Excel", buf.getvalue(), "Template_PPDB.xlsx")
+            st.download_button("📥 Unduh Template", buf.getvalue(), "Template_PPDB.xlsx")
             up = st.file_uploader("Upload Excel", type=['xlsx'])
             if up and st.button("Proses Import"):
                 sheet.append_rows(pd.read_excel(up).astype(str).replace('nan', '').values.tolist())
