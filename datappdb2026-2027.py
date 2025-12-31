@@ -2,128 +2,107 @@ import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
-import base64
-import requests
-import urllib.parse
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+from datetime import datetime
 import io
+import base64
 
-# --- 1. KONFIGURASI SISTEM ---
+# --- 1. KONFIGURASI DATABASE & AKSES ---
 SHEET_NAME = "Database PPDB AL IRSYAD KEDIRI" 
 ADMIN_PASSWORD = "adminirsyad" 
-# MASUKKAN ID FOLDER GOOGLE DRIVE ANDA DI SINI
-PARENT_FOLDER_ID = "1XW_CONTOH_ID_FOLDER_DRIVE_ANDA"
+# Ganti dengan ID Folder Google Drive Anda
+PARENT_FOLDER_ID = "MASUKKAN_ID_FOLDER_DRIVE_DI_SINI"
 
-# Inisialisasi Session State
+# Inisialisasi State agar data tidak hilang saat navigasi
 if 'role' not in st.session_state: st.session_state['role'] = None 
-if 'staff_data' not in st.session_state: st.session_state['staff_data'] = []
 if 'PENGUMUMAN' not in st.session_state: 
-    st.session_state['PENGUMUMAN'] = "Selamat Datang di PPDB Online RA AL IRSYAD AL ISLAMIYYAH KEDIRI."
+    st.session_state['PENGUMUMAN'] = "Selamat Datang di PPDB Online RA AL IRSYAD AL ISLAMIYYAH KEDIRI Tahun Pelajaran 2026/2027."
 
-# DATA LEMBAGA (Kunci Nama Penyelenggara sudah disesuaikan agar tidak KeyError)
+# Data Informasi Umum Lembaga (Lengkap sesuai Gambar)
 if 'INFO_LEMBAGA' not in st.session_state:
     st.session_state['INFO_LEMBAGA'] = {
-        "Nama": "RA AL IRSYAD AL ISLAMIYYAH", 
-        "NSM": "101235710017", 
-        "NPSN": "69749712",
-        "Status": "Swasta", 
-        "Bentuk SP": "RA", 
-        "Kepala": "IMROATUS SOLIKHAH",
-        "Nama Penyelenggara": "AL IRSYAD AL ISLAMIYYAH KOTA KEDIRI", 
-        "Afiliasi": "Nahdlatul Ulama",
-        "Waktu Belajar": "Pagi", 
-        "Status KKM": "Anggota", 
-        "Komite": "Sudah Terbentuk",
-        "Alamat": "Jl. Tembus Kaliombo No. 3-5", 
-        "RT/RW": "29/10", 
-        "Desa": "TOSAREN",
-        "Kecamatan": "PESANTREN", 
-        "Kota": "KOTA KEDIRI", 
-        "Provinsi": "JAWA TIMUR",
-        "Pos": "64133", 
-        "Koordinat": "-7.8301756, 112.0168655", 
-        "Telepon": "(0354) 682524",
+        "Nama": "RA AL IRSYAD AL ISLAMIYYAH", "NSM": "101235710017", "NPSN": "69749712",
+        "Status": "Swasta", "Bentuk SP": "RA", "Kepala": "IMROATUS SOLIKHAH",
+        "Nama Penyelenggara": "AL IRSYAD AL ISLAMIYYAH KOTA KEDIRI", "Afiliasi": "Nahdlatul Ulama",
+        "Waktu Belajar": "Pagi", "Status KKM": "Anggota", "Komite": "Sudah Terbentuk",
+        "Alamat": "Jl. Tembus Kaliombo No. 3-5", "RT/RW": "29/10", "Desa": "TOSAREN",
+        "Kecamatan": "PESANTREN", "Kota": "KOTA KEDIRI", "Provinsi": "JAWA TIMUR",
+        "Pos": "64133", "Koordinat": "-7.8301756, 112.0168655", "Telepon": "(0354) 682524",
         "Email": "ra.alirsyad.kediri@gmail.com"
     }
 
-# --- 2. KONEKSI GOOGLE SERVICES ---
+# --- 2. KONEKSI GOOGLE SERVICES (SHEETS & DRIVE) ---
 @st.cache_resource
-def get_creds():
-    scope = ['https://www.googleapis.com/auth/spreadsheets', 
-             'https://www.googleapis.com/auth/drive',
-             'https://www.googleapis.com/auth/drive.file']
+def get_google_services():
+    scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
     if "gcp_service_account" in st.secrets:
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        return ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
     else:
-        return ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+        creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+    return gspread.authorize(creds), build('drive', 'v3', credentials=creds)
 
-creds = get_creds()
-client = gspread.authorize(creds)
-drive_service = build('drive', 'v3', credentials=creds)
+client, drive_service = get_google_services()
 
-# --- 3. FUNGSI MEDIA (DRIVE & SHEETS) ---
+# --- 3. FUNGSI MEDIA (DRIVE STORAGE) ---
 def upload_to_drive(file, filename):
     try:
         file_metadata = {'name': filename, 'parents': [PARENT_FOLDER_ID]}
-        media = MediaIoBaseUpload(io.BytesIO(file.getvalue()), mimetype='image/jpeg', resumable=True)
-        uploaded_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-        file_id = uploaded_file.get('id')
-        drive_service.permissions().create(fileId=file_id, body={'type': 'anyone', 'role': 'viewer'}).execute()
-        return f"https://drive.google.com/uc?export=download&id={file_id}"
+        media = MediaIoBaseUpload(io.BytesIO(file.getvalue()), mimetype='application/octet-stream', resumable=True)
+        uploaded = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        f_id = uploaded.get('id')
+        drive_service.permissions().create(fileId=f_id, body={'type': 'anyone', 'role': 'viewer'}).execute()
+        return f"https://drive.google.com/uc?export=download&id={f_id}"
     except: return None
 
-def save_media_link(tipe, link, desc=""):
+def save_media_to_sheet(tipe, link, desc=""):
     try:
         db = client.open(SHEET_NAME).worksheet("Media_Data")
         db.append_row([tipe, link, desc, datetime.now().strftime("%Y-%m-%d %H:%M")])
-    except: pass
+    except: st.error("Tab 'Media_Data' tidak ditemukan di Sheets!")
 
-def load_media_links(tipe):
+def load_media_from_sheet(tipe):
     try:
         db = client.open(SHEET_NAME).worksheet("Media_Data")
         data = db.get_all_records()
         return [d for d in data if d['Tipe_Data'] == tipe]
     except: return []
 
-def hitung_umur(born_str):
-    try:
-        born = datetime.strptime(born_str, "%Y-%m-%d")
-        today = datetime.today()
-        return f"{today.year - born.year - ((today.month, today.day) < (born.month, born.day))} Thn"
-    except: return "-"
-
-# --- 4. UI STYLING & DYNAMIC BG ---
+# --- 4. TAMPILAN & BACKGROUND DINAMIS ---
 st.set_page_config(page_title="EMIS PPDB AL IRSYAD", layout="wide")
 
-def set_bg(menu_name):
+def apply_custom_style(menu_name):
+    # Mengambil BG khusus menu dari Drive
     clean_menu = menu_name.replace(" ", "_")
-    bgs = load_media_links(f"BG_{clean_menu}")
-    bg_url = bgs[-1]['Link_Drive'] if bgs else ""
-    overlay = "rgba(2, 132, 199, 0.75)" if st.session_state['role'] is None else "rgba(255, 255, 255, 0.94)"
+    bg_links = load_media_from_sheet(f"BG_{clean_menu}")
+    bg_url = bg_links[-1]['Link_Drive'] if bg_links else ""
+    
+    overlay = "rgba(2, 132, 199, 0.75)" if st.session_state['role'] is None else "rgba(255, 255, 255, 0.95)"
+    
     st.markdown(f"""
         <style>
-        .stApp {{ background-image: linear-gradient({overlay}, {overlay}), url("{bg_url}"); background-size: cover; background-attachment: fixed; }}
-        .header-box {{ background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; align-items: center; margin-bottom: 20px; border: 1px solid #E2E8F0; }}
-        .section-title {{ background: #0284C7; color: white; padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; }}
-        .emis-table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+        .stApp {{
+            background-image: linear-gradient({overlay}, {overlay}), url("{bg_url}");
+            background-size: cover; background-attachment: fixed;
+        }}
+        .header-box {{ background: white; padding: 25px; border-radius: 15px; border: 1px solid #E2E8F0; margin-bottom: 20px; }}
+        .section-title {{ background: #0284C7; color: white; padding: 12px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; }}
+        .emis-table {{ width: 100%; border-collapse: collapse; font-size: 14px; }}
         .emis-table td {{ padding: 10px; border-bottom: 1px solid #F1F5F9; vertical-align: top; }}
-        .label-emis {{ font-weight: bold; color: #64748B; width: 220px; text-transform: uppercase; }}
+        .label-emis {{ font-weight: bold; color: #64748B; width: 200px; text-transform: uppercase; }}
         </style>
     """, unsafe_allow_html=True)
 
-# --- 5. GERBANG LOGIN ---
+# --- 5. LOGIKA GERBANG LOGIN ---
 if st.session_state['role'] is None:
-    set_bg("LOGIN")
+    apply_custom_style("LOGIN")
     st.markdown("<br><br><br>", unsafe_allow_html=True)
     with st.container():
-        st.markdown('<div style="background:white; padding:50px; border-radius:20px; text-align:center; max-width:550px; margin:auto; box-shadow:0 20px 25px rgba(0,0,0,0.2);">', unsafe_allow_html=True)
-        st.markdown("<h1 style='color:#0284C7; margin-bottom:0;'>PORTAL PPDB</h1><h4>RA AL IRSYAD AL ISLAMIYYAH</h4><hr>", unsafe_allow_html=True)
+        st.markdown('<div style="background:white; padding:50px; border-radius:20px; text-align:center; max-width:550px; margin:auto; box-shadow:0 15px 30px rgba(0,0,0,0.3);">', unsafe_allow_html=True)
+        st.markdown("<h1 style='color:#0284C7;'>PORTAL PPDB</h1><h4>RA AL IRSYAD AL ISLAMIYYAH KEDIRI</h4><hr>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         if c1.button("👤 WALI MURID", use_container_width=True): st.session_state['role'] = 'user'; st.rerun()
-        if c2.button("🔑 ADMIN", use_container_width=True): st.session_state['role'] = 'admin_auth'; st.rerun()
+        if c2.button("🔑 ADMINISTRATOR", use_container_width=True): st.session_state['role'] = 'admin_auth'; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -132,95 +111,126 @@ if st.session_state['role'] == 'admin_auth':
     pw = st.text_input("Sandi Admin", type="password")
     if st.button("Masuk"):
         if pw == ADMIN_PASSWORD: st.session_state['role'] = 'admin'; st.rerun()
-        else: st.error("Sandi Salah")
+        else: st.error("Sandi Salah!")
     if st.button("Kembali"): st.session_state['role'] = None; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True); st.stop()
 
-# --- 6. SIDEBAR ---
+# --- 6. SIDEBAR NAVIGASI ---
 with st.sidebar:
-    st.markdown(f"### LOGIN: {st.session_state['role'].upper()}")
-    menu = st.selectbox("Pilih Halaman", ["🏠 Profil Sekolah", "📝 Pendaftaran Siswa Baru", "📋 Daftar Siswa Terdaftar", "📸 Galeri Sekolah", "👨‍🏫 Profil Guru & Staf", "⚙️ Pengaturan BG"])
-    if st.button("Log Out 🚪"): st.session_state['role'] = None; st.rerun()
+    st.markdown(f"### LOGIN SEBAGAI: {st.session_state['role'].upper()}")
+    menu = st.selectbox("PILIH MENU", ["🏠 Profil Sekolah", "📝 Pendaftaran Baru", "📋 Daftar Pendaftar", "📸 Galeri Kegiatan", "⚙️ Pengaturan App"])
+    if st.button("Keluar 🚪"): st.session_state['role'] = None; st.rerun()
 
-set_bg(menu)
+apply_custom_style(menu)
 
-# --- 7. LOGIKA HALAMAN ---
+# --- 7. MODUL HALAMAN ---
 
+# A. PROFIL SEKOLAH
 if menu == "🏠 Profil Sekolah":
-    st.markdown(f'<div class="header-box"><div><h2 style="margin:0; color:#1E293B;">{st.session_state["INFO_LEMBAGA"]["Nama"]}</h2><p>NSM: {st.session_state["INFO_LEMBAGA"]["NSM"]} | NPSN: {st.session_state["INFO_LEMBAGA"]["NPSN"]}</p></div></div>', unsafe_allow_html=True)
-    
-    st.markdown(f'<div style="background:#E0F2FE; padding:15px; border-radius:10px; margin-bottom:20px; color:#0369A1;">📢 <b>PENGUMUMAN:</b> {st.session_state["PENGUMUMAN"]}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="header-box"><h2>{st.session_state["INFO_LEMBAGA"]["Nama"]}</h2></div>', unsafe_allow_html=True)
+    st.info(f"📢 **PENGUMUMAN:** {st.session_state['PENGUMUMAN']}")
     
     colL, colR = st.columns(2)
     with colL:
-        st.markdown('<div class="section-title">Informasi Umum</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">INFORMASI UMUM</div>', unsafe_allow_html=True)
         st.markdown(f"""<table class="emis-table">
-            <tr><td class="label-emis">KEPALA</td><td>: {st.session_state['INFO_LEMBAGA'].get('Kepala', '-')}</td></tr>
-            <tr><td class="label-emis">PENYELENGGARA</td><td>: {st.session_state['INFO_LEMBAGA'].get('Nama Penyelenggara', '-')}</td></tr>
-            <tr><td class="label-emis">AFILIASI</td><td>: {st.session_state['INFO_LEMBAGA'].get('Afiliasi', '-')}</td></tr>
-            <tr><td class="label-emis">WAKTU BELAJAR</td><td>: {st.session_state['INFO_LEMBAGA'].get('Waktu Belajar', '-')}</td></tr>
+            <tr><td class="label-emis">NSM / NPSN</td><td>: {st.session_state['INFO_LEMBAGA']['NSM']} / {st.session_state['INFO_LEMBAGA']['NPSN']}</td></tr>
+            <tr><td class="label-emis">KEPALA</td><td>: {st.session_state['INFO_LEMBAGA']['Kepala']}</td></tr>
+            <tr><td class="label-emis">PENYELENGGARA</td><td>: {st.session_state['INFO_LEMBAGA']['Nama Penyelenggara']}</td></tr>
         </table>""", unsafe_allow_html=True)
     with colR:
-        st.markdown('<div class="section-title">Domisili</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">DOMISILI</div>', unsafe_allow_html=True)
         st.markdown(f"""<table class="emis-table">
-            <tr><td class="label-emis">ALAMAT</td><td>: {st.session_state['INFO_LEMBAGA'].get('Alamat', '-')}</td></tr>
-            <tr><td class="label-emis">KECAMATAN</td><td>: {st.session_state['INFO_LEMBAGA'].get('Kecamatan', '-')}</td></tr>
-            <tr><td class="label-emis">KOORDINAT</td><td>: {st.session_state['INFO_LEMBAGA'].get('Koordinat', '-')}</td></tr>
+            <tr><td class="label-emis">ALAMAT</td><td>: {st.session_state['INFO_LEMBAGA']['Alamat']}</td></tr>
+            <tr><td class="label-emis">KECAMATAN</td><td>: {st.session_state['INFO_LEMBAGA']['Kecamatan']}</td></tr>
+            <tr><td class="label-emis">KOORDINAT</td><td>: {st.session_state['INFO_LEMBAGA']['Koordinat']}</td></tr>
         </table>""", unsafe_allow_html=True)
 
-elif menu == "📝 Pendaftaran Siswa Baru":
-    st.markdown('<div class="section-title">FORMULIR PENDAFTARAN (3 TABS)</div>', unsafe_allow_html=True)
-    with st.form("ppdb_drive", clear_on_submit=True):
-        t1, t2, t3 = st.tabs(["📄 1. Data Siswa", "👨‍👩‍👧 2. Data Keluarga", "🏠 3. Data Alamat"])
+# B. PENDAFTARAN (37 KOLOM LENGKAP)
+elif menu == "📝 Pendaftaran Baru":
+    st.markdown('<div class="section-title">FORMULIR PPDB (3 HALAMAN)</div>', unsafe_allow_html=True)
+    with st.form("ppdb_main_form", clear_on_submit=True):
+        t1, t2, t3 = st.tabs(["📄 DATA SISWA", "👨‍👩‍👧 DATA KELUARGA", "🏠 DATA ALAMAT"])
+        
         with t1:
-            nm = st.text_input("Nama Lengkap*")
-            nk = st.text_input("NIK*")
-            tl = st.date_input("Tanggal Lahir", min_value=datetime(1945,1,1), max_value=datetime(2100,12,31))
-            jk = st.selectbox("Kelamin", ["Laki-laki", "Perempuan"])
-            f_kk = st.file_uploader("Upload KK (PDF/JPG)", type=['pdf','jpg','png'])
+            st.subheader("Identitas Peserta Didik")
+            c1, c2 = st.columns(2)
+            nm = c1.text_input("Nama Lengkap*")
+            nsn = c2.text_input("NISN")
+            nsl = c1.text_input("Nis Lokal")
+            kwn = c2.selectbox("Kewarganegaraan", ["WNI", "WNA"])
+            nik = c1.text_input("NIK Siswa*")
+            tgl = c2.date_input("Tanggal Lahir", min_value=datetime(1945,1,1))
+            tmp = c1.text_input("Tempat Lahir")
+            jk = c2.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+            sau = c1.number_input("Jumlah Saudara", 0)
+            ake = c2.number_input("Anak Ke", 1)
+            agm = c1.selectbox("Agama", ["Islam", "Kristen", "Katolik", "Hindu", "Budha"])
+            nkk = c2.text_input("No Kartu Keluarga")
+            f_kk = st.file_uploader("Upload KK (PDF/JPG/PNG)", type=['pdf','jpg','png'])
+            nk_kk = st.text_input("Nama Kepala Keluarga")
+
         with t2:
-            ay_n = st.text_input("Nama Ayah")
-            ay_p = st.selectbox("Pendidikan Ayah", ["SD","SMP","SMA","S1","S2","S3"])
+            st.subheader("Data Ayah & Ibu Kandung")
+            ay1, ay2 = st.columns(2)
+            ay_n = ay1.text_input("Nama Ayah")
+            ay_k = ay2.text_input("NIK Ayah")
+            ay_t = ay1.text_input("Tempat Lahir Ayah")
+            ay_d = ay2.date_input("Tgl Lahir Ayah", key="ayd", min_value=datetime(1940,1,1))
+            ay_p = ay1.selectbox("Pendidikan Ayah", ["SD","SMP","SMA","D3","S1","S2","S3"])
+            ay_j = ay2.text_input("Pekerjaan Ayah")
             ay_g = st.text_input("Penghasilan Ayah")
             st.markdown("---")
-            ib_n = st.text_input("Nama Ibu")
-            ib_p = st.selectbox("Pendidikan Ibu", ["SD","SMP","SMA","S1","S2","S3"])
+            ib1, ib2 = st.columns(2)
+            ib_n = ib1.text_input("Nama Ibu")
+            ib_k = ib2.text_input("NIK Ibu")
+            ib_t = ib1.text_input("Tempat Lahir Ibu")
+            ib_d = ib2.date_input("Tgl Lahir Ibu", key="ibd", min_value=datetime(1940,1,1))
+            ib_p = ib1.selectbox("Pendidikan Ibu", ["SD","SMP","SMA","D3","S1","S2","S3"])
+            ib_j = ib2.text_input("Pekerjaan Ibu")
             ib_g = st.text_input("Penghasilan Ibu")
+
         with t3:
-            sh = st.selectbox("Status Rumah", ["Milik Sendiri", "Sewa", "Lainnya"])
-            al = st.text_area("Alamat Lengkap")
-        
-        if st.form_submit_button("✅ KIRIM DATA"):
-            if nm and nk:
-                url_kk = upload_to_drive(f_kk, f"KK_{nm}_{nk}") if f_kk else "No File"
+            st.subheader("Data Alamat & Kontak")
+            sh = st.selectbox("Status Rumah", ["Milik Sendiri", "Kontrak/Sewa", "Lainnya"])
+            al1, al2 = st.columns(2)
+            prov = al1.text_input("Provinsi", "Jawa Timur")
+            kab = al2.text_input("Kabupaten/Kota", "Kediri")
+            kec = al1.text_input("Kecamatan")
+            des = al2.text_input("Kelurahan/Desa")
+            alm = st.text_area("Alamat Lengkap")
+            kpos = st.text_input("Kode Pos")
+
+        if st.form_submit_button("✅ KIRIM PENDAFTARAN"):
+            if nm and nik:
+                url_kk = upload_to_drive(f_kk, f"KK_{nm}_{nik}") if f_kk else "Tanpa File"
                 try:
                     db = client.open(SHEET_NAME).sheet1
-                    db.append_row([datetime.now().strftime("%Y-%m-%d"), nm, nk, str(tl), jk, ay_n, ay_p, ay_g, ib_n, ib_p, ib_g, sh, al, url_kk])
-                    st.success("Pendaftaran Berhasil!")
-                except: st.error("Gagal koneksi database")
+                    # Total 37 Kolom Isian
+                    data_final = [
+                        datetime.now().strftime("%Y-%m-%d"), nm, nsn, nsl, kwn, f"'{nik}", str(tgl), tmp, jk, sau, ake, agm, f"'{nkk}", nk_kk,
+                        ay_n, f"'{ay_k}", ay_t, str(ay_d), ay_p, ay_j, ay_g,
+                        ib_n, f"'{ib_k}", ib_t, str(ib_d), ib_p, ib_j, ib_g,
+                        sh, prov, kab, kec, des, alm, kpos, url_kk, "Pending"
+                    ]
+                    db.append_row(data_final)
+                    st.success("Data Berhasil Disimpan di Cloud!"); st.balloons()
+                except: st.error("Gagal terhubung ke Database!")
 
-elif menu == "📋 Daftar Siswa Terdaftar":
-    try:
-        db = client.open(SHEET_NAME).sheet1
-        df = pd.DataFrame(db.get_all_records())
-        if not df.empty:
-            df['UMUR'] = df['Tanggal Lahir'].apply(lambda x: hitung_umur(str(x)))
-            st.table(df[['Nama Lengkap', 'NIK', 'UMUR']])
-    except: st.info("Belum ada data.")
-
-elif menu == "📸 Galeri Sekolah":
-    st.markdown('<div class="section-title">📸 GALERI DOKUMENTASI (DRIVE)</div>', unsafe_allow_html=True)
+# C. GALERI (DENGAN PREVIEW)
+elif menu == "📸 Galeri Kegiatan":
+    st.markdown('<div class="section-title">DOKUMENTASI SEKOLAH</div>', unsafe_allow_html=True)
     if st.session_state['role'] == 'admin':
-        with st.expander("📤 Tambah Foto"):
-            f_gal = st.file_uploader("Pilih Gambar")
-            d_gal = st.text_input("Deskripsi")
-            if st.button("Proses Upload"):
-                link = upload_to_drive(f_gal, f"GALERI_{datetime.now().timestamp()}")
+        with st.expander("📤 Upload Foto ke Drive"):
+            f_g = st.file_uploader("Pilih Foto")
+            d_g = st.text_input("Deskripsi")
+            if st.button("Upload"):
+                link = upload_to_drive(f_g, f"GAL_{datetime.now().timestamp()}")
                 if link:
-                    save_media_link("Galeri", link, d_gal)
-                    st.success("Foto Berhasil Masuk Drive!"); st.rerun()
+                    save_media_to_sheet("Galeri", link, d_g)
+                    st.success("Tersimpan!"); st.rerun()
 
-    items = load_media_links("Galeri")
+    items = load_media_from_sheet("Galeri")
     cols = st.columns(3)
     for i, itm in enumerate(items):
         with cols[i % 3]:
@@ -228,13 +238,15 @@ elif menu == "📸 Galeri Sekolah":
             with st.expander("🔍 Zoom"):
                 st.image(itm['Link_Drive'], caption=itm['Deskripsi'])
 
-elif menu == "⚙️ Pengaturan BG":
+# D. PENGATURAN APP (GANTI BACKGROUND)
+elif menu == "⚙️ Pengaturan App":
     if st.session_state['role'] == 'admin':
-        st.subheader("Atur Background Per Menu")
-        target = st.selectbox("Pilih Menu", ["LOGIN", "🏠_Profil_Sekolah", "📝_Pendaftaran_Siswa_Baru", "📸_Galeri_Sekolah", "👨‍🏫_Profil_Guru_&_Staf"])
-        f_bg = st.file_uploader(f"Upload Gambar untuk {target}")
-        if st.button("Simpan Permanen"):
+        st.markdown('<div class="section-title">PENGATURAN BACKGROUND PER MENU</div>', unsafe_allow_html=True)
+        target = st.selectbox("Pilih Menu", ["LOGIN", "🏠_Profil_Sekolah", "📝_Pendaftaran_Baru", "📸_Galeri_Kegiatan"])
+        f_bg = st.file_uploader(f"Upload Background untuk {target}")
+        if st.button("Update Background"):
             link = upload_to_drive(f_bg, f"BG_{target}")
             if link:
-                save_media_link(f"BG_{target}", link)
-                st.success("Background diperbarui!"); st.rerun()
+                save_media_to_sheet(f"BG_{target}", link)
+                st.success("Berhasil diperbarui!"); st.rerun()
+    else: st.warning("Khusus Admin!")
