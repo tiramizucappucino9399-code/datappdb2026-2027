@@ -74,6 +74,7 @@ st.markdown(f"""
     .label-emis {{ color: #64748B; font-weight: 500; width: 180px; }}
     .section-title {{ background-color: #F8FAFC; padding: 12px; font-weight: bold; border-bottom: 2px solid #E2E8F0; margin-bottom: 15px; color: #0284C7; }}
     .stForm {{ background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #E2E8F0; }}
+    .gallery-desc {{ font-size: 13px; color: #475569; margin-top: 5px; text-align: center; font-style: italic; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -113,15 +114,12 @@ if menu == "🏠 Profil Sekolah":
     </div>
     """, unsafe_allow_html=True)
 
-    # --- INFORMASI UMUM DENGAN FITUR EDIT ADMIN ---
     st.markdown('<div style="background-color:white; padding:25px; border-radius:12px; border:1px solid #E2E8F0;">', unsafe_allow_html=True)
     
     col_header_left, col_header_right = st.columns([4, 1])
     with col_header_left:
         st.markdown('<div class="section-title">INFORMASI UMUM LEMBAGA</div>', unsafe_allow_html=True)
     
-    # Tombol Edit Muncul Hanya jika Admin Login
-    show_edit_form = False
     if st.session_state['auth']:
         with col_header_right:
             if st.button("✏️ Edit Profil"):
@@ -178,9 +176,10 @@ if menu == "🏠 Profil Sekolah":
     if st.session_state['temp_gallery']:
         st.markdown('<br><div class="section-title">DOKUMENTASI KEGIATAN TERBARU</div>', unsafe_allow_html=True)
         cols_profile = st.columns(4)
-        for idx, img_b64 in enumerate(st.session_state['temp_gallery']):
+        for idx, item in enumerate(st.session_state['temp_gallery']):
             with cols_profile[idx % 4]:
-                st.image(f"data:image/png;base64,{img_b64}", use_container_width=True)
+                st.image(f"data:image/png;base64,{item['img']}", use_container_width=True)
+                st.markdown(f"<div class='gallery-desc'>{item['desc']}</div>", unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -259,22 +258,40 @@ elif menu == "📝 Pendaftaran Siswa Baru":
 
 elif menu == "📸 Galeri Sekolah":
     st.markdown('<div class="section-title">📸 GALERI KEGIATAN SISWA & GURU</div>', unsafe_allow_html=True)
-    st.markdown("##### 📤 Tambah Foto Baru")
-    uploaded_files = st.file_uploader("Pilih foto kegiatan (JPG/PNG)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
-    if st.button("Tampilkan di Galeri"):
-        if uploaded_files:
-            for uploaded_file in uploaded_files:
-                bytes_data = uploaded_file.getvalue()
-                encoded = base64.b64encode(bytes_data).decode()
-                st.session_state['temp_gallery'].append(encoded)
-            st.success(f"Berhasil mengunggah {len(uploaded_files)} foto.")
-        else: st.warning("Silakan pilih file terlebih dahulu.")
+    
+    # --- FITUR UNGGAH: HANYA TAMPIL UNTUK ADMIN ---
+    if st.session_state['auth']:
+        st.markdown("##### 📤 Tambah Foto Baru (Khusus Admin)")
+        with st.expander("Klik untuk Unggah Foto"):
+            uploaded_files = st.file_uploader("Pilih foto kegiatan (JPG/PNG)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+            caption_input = st.text_input("Berikan Deskripsi/Keterangan Foto")
+            
+            if st.button("Simpan ke Galeri"):
+                if uploaded_files:
+                    for uploaded_file in uploaded_files:
+                        bytes_data = uploaded_file.getvalue()
+                        encoded = base64.b64encode(bytes_data).decode()
+                        st.session_state['temp_gallery'].append({
+                            "img": encoded,
+                            "desc": caption_input if caption_input else "Kegiatan Sekolah"
+                        })
+                    st.success(f"Berhasil mengunggah {len(uploaded_files)} foto.")
+                    st.rerun()
+                else:
+                    st.warning("Silakan pilih file terlebih dahulu.")
+    else:
+        st.info("ℹ️ Menu ini menampilkan dokumentasi kegiatan sekolah. Penambahan foto hanya dapat dilakukan oleh Admin.")
+
     st.markdown("---")
+    
     if st.session_state['temp_gallery']:
         cols = st.columns(3)
-        for index, img_data in enumerate(st.session_state['temp_gallery']):
-            with cols[index % 3]: st.image(f"data:image/png;base64,{img_data}", use_container_width=True)
-    else: st.info("Belum ada foto yang diunggah.")
+        for index, item in enumerate(st.session_state['temp_gallery']):
+            with cols[index % 3]:
+                st.image(f"data:image/png;base64,{item['img']}", use_container_width=True)
+                st.markdown(f"<div class='gallery-desc'>{item['desc']}</div>", unsafe_allow_html=True)
+    else:
+        st.info("Belum ada foto kegiatan yang diunggah.")
 
 elif menu == "🔐 Panel Admin":
     if not st.session_state['auth']:
@@ -283,7 +300,8 @@ elif menu == "🔐 Panel Admin":
             if pw == ADMIN_PASSWORD:
                 st.session_state['auth'] = True
                 st.rerun()
-            else: st.error("Password Salah!")
+            else:
+                st.error("Password Salah!")
         st.stop()
     
     st.sidebar.button("Log Out", on_click=lambda: st.session_state.update({'auth': False}))
@@ -296,7 +314,8 @@ elif menu == "🔐 Panel Admin":
         tab_view, tab_edit = st.tabs(["🔍 Lihat Data", "✏️ Edit/Perbarui Data"])
         with tab_view:
             st.dataframe(df, use_container_width=True)
-            st.download_button("📥 Ekspor CSV", df.to_csv(index=False).encode('utf-8'), "Data_PPDB.csv", "text/csv")
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Ekspor CSV", csv, "Data_PPDB.csv", "text/csv")
         with tab_edit:
             search_query = st.text_input("Cari Berdasarkan Nama atau No Registrasi")
             if search_query:
