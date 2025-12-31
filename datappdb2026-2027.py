@@ -210,9 +210,39 @@ elif menu == "📝 Pendaftaran Siswa Baru":
                 except Exception as e:
                     st.error(f"Terjadi kesalahan: {e}")
 
+# --- TAMBAHAN FITUR: MODUL GALERI DENGAN UPLOAD ---
 elif menu == "📸 Galeri Sekolah":
-    st.markdown('<div class="section-title">GALERI KEGIATAN SISWA & GURU</div>', unsafe_allow_html=True)
-    st.info("Halaman ini akan menampilkan dokumentasi kegiatan RA AL IRSYAD.")
+    st.markdown('<div class="section-title">📸 GALERI KEGIATAN SISWA & GURU</div>', unsafe_allow_html=True)
+    
+    # Inisialisasi session state untuk menyimpan daftar foto sementara
+    if 'temp_gallery' not in st.session_state:
+        st.session_state['temp_gallery'] = []
+
+    # UI Upload Foto (Hanya tampil jika Admin login atau bisa diatur publik)
+    st.markdown("##### 📤 Tambah Foto Baru")
+    uploaded_files = st.file_uploader("Pilih foto kegiatan (JPG/PNG)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+    
+    if st.button("Tampilkan di Galeri"):
+        if uploaded_files:
+            for uploaded_file in uploaded_files:
+                bytes_data = uploaded_file.getvalue()
+                # Encode ke Base64 agar bisa ditampilkan langsung
+                encoded = base64.b64encode(bytes_data).decode()
+                st.session_state['temp_gallery'].append(encoded)
+            st.success(f"Berhasil mengunggah {len(uploaded_files)} foto ke sesi ini.")
+        else:
+            st.warning("Silakan pilih file terlebih dahulu.")
+
+    st.markdown("---")
+    
+    # Menampilkan Foto dalam Grid
+    if st.session_state['temp_gallery']:
+        cols = st.columns(3) # Membuat 3 kolom
+        for index, img_data in enumerate(st.session_state['temp_gallery']):
+            with cols[index % 3]:
+                st.image(f"data:image/png;base64,{img_data}", use_container_width=True)
+    else:
+        st.info("Belum ada foto yang diunggah di sesi ini. Silakan unggah foto kegiatan sekolah di atas.")
 
 elif menu == "🔐 Panel Admin":
     if "auth" not in st.session_state: st.session_state.auth = False
@@ -251,16 +281,13 @@ elif menu == "🔐 Panel Admin":
                 
                 if not filtered_df.empty:
                     selected_reg = st.selectbox("Pilih No Registrasi untuk Diedit", filtered_df['No. Registrasi'].values)
-                    # Ambil indeks baris (tambah 2 karena gspread mulai dari 1 dan ada header)
                     row_index = df.index[df['No. Registrasi'] == selected_reg].tolist()[0] + 2
                     current_values = sheet.row_values(row_index)
 
                     with st.form("edit_form"):
                         st.info(f"Mengedit Data: {selected_reg}")
                         new_data = []
-                        # Buat input untuk setiap kolom
                         for i, col_name in enumerate(headers):
-                            # Jika No Registrasi atau Tanggal Daftar, biarkan saja (read-only di pikiran)
                             val = st.text_input(f"{col_name}", value=current_values[i] if i < len(current_values) else "")
                             new_data.append(val)
                         
