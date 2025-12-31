@@ -8,7 +8,7 @@ import urllib.parse
 
 # --- 1. KONFIGURASI SISTEM ---
 SHEET_NAME = "Database PPDB AL IRSYAD KEDIRI" 
-ADMIN_PASSWORD = "adminirsyad" 
+ADMIN_PASSWORD = "adminirsyad" # Silakan ganti sesuai keinginan
 
 # --- 2. FUNGSI KONEKSI GOOGLE SHEETS ---
 @st.cache_resource
@@ -25,26 +25,30 @@ def init_google_sheets():
         st.error(f"Koneksi Gagal: {e}")
         return None
 
-# --- 3. STANDARISASI KOLOM ---
-# Menambahkan kolom "No. WhatsApp" agar bisa dikirimi pesan
+# --- 3. STANDARISASI KOLOM (TOTAL 37 KOLOM) ---
 KOLOM_DATABASE = [
-    "No. Registrasi", "Nama Lengkap", "NISN", "NIS Lokal", "NIK Siswa", 
-    "Jenis Kelamin", "No. WhatsApp Wali", "Nama Ayah", "Nama Ibu", 
-    "Alamat Lengkap", "Tanggal Daftar", "Status Verifikasi"
+    "No. Registrasi", "Nama Lengkap", "NISN", "NIS Lokal", "Kewarganegaraan", "NIK Siswa", 
+    "Tanggal Lahir", "Tempat Lahir", "Jenis Kelamin", "Jumlah Saudara", "Anak Ke", 
+    "Agama", "No KK", "Nama Kepala Keluarga", "Nomor WhatsApp",
+    "Nama Ayah", "NIK Ayah", "Tempat Lahir Ayah", "Tanggal Lahir Ayah", "Pendidikan Ayah", "Pekerjaan Ayah", "Penghasilan Ayah",
+    "Nama Ibu", "NIK Ibu", "Tempat Lahir Ibu", "Tanggal Lahir Ibu", "Pendidikan Ibu", "Pekerjaan Ibu", "Penghasilan Ibu",
+    "Status Rumah", "Provinsi", "Kabupaten/Kota", "Kecamatan", "Kelurahan/Desa", "Alamat Lengkap", "Kode Pos",
+    "Tanggal Daftar", "Status Verifikasi"
 ]
 
-# --- 4. UI SETUP ---
+# --- 4. TAMPILAN ANTARMUKA ---
 st.set_page_config(page_title="PPDB AL IRSYAD KEDIRI", page_icon="🏫", layout="wide")
 
 st.markdown("""
     <style>
     .main-header {text-align: center; background-color: #1E5128; padding: 25px; border-radius: 10px; color: white; margin-bottom: 25px;}
     .stButton>button {width: 100%; border-radius: 8px; height: 3.5em; background-color: #1E5128; color: white; font-weight: bold;}
-    .section-header {background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; margin-bottom: 10px; border-left: 5px solid #1E5128;}
+    .section-header {background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; margin-bottom: 10px; border-left: 5px solid #1E5128; font-weight: bold;}
     </style>
     <div class="main-header">
         <h1>SISTEM INFORMASI PPDB & NOTIFIKASI</h1>
         <h3>KB-RA AL IRSYAD AL ISLAMIIYAH KOTA KEDIRI</h3>
+        <p>Tahun Ajaran 2026-2027</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -56,90 +60,136 @@ menu = st.sidebar.radio("MENU UTAMA", ["📝 Pendaftaran Murid", "📊 Dashboard
 # --- MODUL 1: PENDAFTARAN ---
 if menu == "📝 Pendaftaran Murid":
     with st.form("ppdb_form", clear_on_submit=True):
-        st.markdown('<div class="section-header">📑 DATA SISWA & KONTAK</div>', unsafe_allow_html=True)
+        
+        # HALAMAN 1: DATA SISWA
+        st.markdown('<div class="section-header">📑 HALAMAN 1: DATA SISWA & KONTAK</div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         nama = c1.text_input("Nama Lengkap*")
-        nik_s = c2.text_input("NIK Siswa (16 Digit)*")
-        no_wa = c1.text_input("Nomor WhatsApp Wali (Contoh: 08123xxx)*")
+        nisn = c2.text_input("NISN")
+        nis_lokal = c1.text_input("NIS Lokal")
+        kwn = c2.text_input("Kewarganegaraan", value="WNI")
+        nik_s = c1.text_input("NIK Siswa (16 Digit)*")
+        tgl_s = c2.date_input("Tanggal Lahir", min_value=datetime(2015,1,1))
+        tmp_s = c1.text_input("Tempat Lahir")
         jk = c2.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+        saudara = c1.number_input("Jumlah Saudara", min_value=0, step=1)
+        anak_ke = c2.number_input("Anak Ke", min_value=1, step=1)
+        agama = c1.selectbox("Agama", ["Islam", "Kristen", "Katolik", "Hindu", "Budha", "Khonghucu"])
+        no_kk = c2.text_input("No. Kartu Keluarga (KK)")
+        kepala_kk = c1.text_input("Nama Kepala Keluarga")
+        no_wa = c2.text_input("Nomor WhatsApp Aktif (Contoh: 08123...)*")
+
+        # HALAMAN 2: DATA KELUARGA
+        st.markdown('<div class="section-header">👨‍👩‍👧‍👦 HALAMAN 2: DATA KELUARGA</div>', unsafe_allow_html=True)
+        t_ayah, t_ibu = st.tabs(["Data Ayah Kandung", "Data Ibu Kandung"])
         
-        st.markdown('<div class="section-header">👨‍👩‍👧‍👦 DATA KELUARGA & ALAMAT</div>', unsafe_allow_html=True)
+        with t_ayah:
+            ay1, ay2 = st.columns(2)
+            n_ayah = ay1.text_input("Nama Ayah Kandung")
+            nik_a = ay2.text_input("NIK Ayah Kandung")
+            tmp_a = ay1.text_input("Tempat Lahir Ayah")
+            tgl_a = ay2.date_input("Tanggal Lahir Ayah", key="t_ay")
+            pend_a = ay1.selectbox("Pendidikan Ayah", ["SD", "SMP", "SMA/K", "D3", "S1", "S2", "S3"])
+            pek_a = ay2.text_input("Pekerjaan Utama Ayah")
+            gaji_a = st.number_input("Penghasilan Ayah (Rp)", min_value=0, step=100000)
+
+        with t_ibu:
+            ib1, ib2 = st.columns(2)
+            n_ibu = ib1.text_input("Nama Ibu Kandung")
+            nik_i = ib2.text_input("NIK Ibu Kandung")
+            tmp_i = ib1.text_input("Tempat Lahir Ibu")
+            tgl_i = ib2.date_input("Tanggal Lahir Ibu", key="t_ib")
+            pend_i = ib1.selectbox("Pendidikan Ibu", ["SD", "SMP", "SMA/K", "D3", "S1", "S2", "S3"])
+            pek_i = ib2.text_input("Pekerjaan Utama Ibu")
+            gaji_i = st.number_input("Penghasilan Ibu (Rp)", min_value=0, step=100000)
+
+        # HALAMAN 3: DATA ALAMAT
+        st.markdown('<div class="section-header">🏠 HALAMAN 3: DATA ALAMAT</div>', unsafe_allow_html=True)
+        status_rmh = st.selectbox("Status Kepemilikan Rumah", ["Milik Sendiri", "Kontrak/Sewa", "Lainnya"])
         a1, a2 = st.columns(2)
-        n_ayah = a1.text_input("Nama Ayah Kandung")
-        n_ibu = a2.text_input("Nama Ibu Kandung")
+        prov = a1.text_input("Provinsi", value="Jawa Timur")
+        kota = a2.text_input("Kabupaten/Kota", value="Kediri")
+        kec = a1.text_input("Kecamatan")
+        desa = a2.text_input("Kelurahan/Desa")
         alamat = st.text_area("Alamat Lengkap")
+        pos = st.text_input("Kode Pos")
 
         btn_submit = st.form_submit_button("✅ DAFTAR SEKARANG")
-        
-        if btn_submit:
-            if nama and nik_s and no_wa:
-                try:
-                    sheet = client.open(SHEET_NAME).sheet1
-                    reg_id = f"REG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                    # Format nomor WA agar depannya 62
-                    wa_fix = no_wa.replace("08", "628", 1) if no_wa.startswith("08") else no_wa
-                    
-                    data_final = [
-                        reg_id, nama, "", "", f"'{nik_s}", 
-                        jk, wa_fix, n_ayah, n_ibu, 
-                        alamat, datetime.now().strftime("%Y-%m-%d"), "Belum Diverifikasi"
-                    ]
-                    sheet.append_row(data_final)
-                    
-                    st.success(f"Berhasil Terdaftar! No. Registrasi Anda: {reg_id}")
-                    
-                    # Pesan Otomatis WhatsApp
-                    pesan = f"Konfirmasi PPDB KB-RA AL IRSYAD KEDIRI\n\nAlhamdulillah, pendaftaran Ananda *{nama}* telah kami terima.\nNo. Registrasi: *{reg_id}*\nStatus: Belum Diverifikasi\n\nTerima kasih."
-                    encoded_pesan = urllib.parse.quote(pesan)
-                    wa_url = f"https://wa.me/{wa_fix}?text={encoded_pesan}"
-                    
-                    st.markdown(f'<a href="{wa_url}" target="_blank" style="text-decoration:none;"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:15px; border-radius:8px; font-weight:bold; cursor:pointer;">📲 KLIK DI SINI UNTUK KIRIM KONFIRMASI KE WHATSAPP</button></a>', unsafe_allow_html=True)
-                    st.balloons()
-                except Exception as e: st.error(f"Error: {e}")
-            else: st.warning("Nama, NIK, dan Nomor WhatsApp wajib diisi!")
+
+    if btn_submit:
+        if nama and nik_s and no_wa:
+            try:
+                sheet = client.open(SHEET_NAME).sheet1
+                reg_id = f"REG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                wa_fix = no_wa.replace("08", "628", 1) if no_wa.startswith("08") else no_wa
+                
+                data_final = [
+                    reg_id, nama, nisn, nis_lokal, kwn, f"'{nik_s}", 
+                    str(tgl_s), tmp_s, jk, saudara, anak_ke, agama, f"'{no_kk}", kepala_kk, wa_fix,
+                    n_ayah, f"'{nik_a}", tmp_a, str(tgl_a), pend_a, pek_a, gaji_a,
+                    n_ibu, f"'{nik_i}", tmp_i, str(tgl_i), pend_i, pek_i, gaji_i,
+                    status_rmh, prov, kota, kec, desa, alamat, pos,
+                    datetime.now().strftime("%Y-%m-%d"), "Belum Diverifikasi"
+                ]
+                sheet.append_row(data_final)
+                
+                st.success(f"Berhasil Terdaftar! No. Registrasi: {reg_id}")
+                
+                # Link WhatsApp Otomatis
+                pesan = f"Konfirmasi PPDB KB-RA AL IRSYAD KEDIRI\n\nAlhamdulillah, data Ananda *{nama}* telah masuk ke sistem.\nNo. Registrasi: *{reg_id}*\n\nMohon simpan pesan ini."
+                wa_url = f"https://wa.me/{wa_fix}?text={urllib.parse.quote(pesan)}"
+                st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:15px; border-radius:8px; font-weight:bold; cursor:pointer;">📲 KIRIM KONFIRMASI KE WHATSAPP SAYA</button></a>', unsafe_allow_html=True)
+                st.balloons()
+            except Exception as e: st.error(f"Gagal simpan: {e}")
+        else: st.warning("Mohon lengkapi Nama, NIK, dan Nomor WhatsApp!")
 
 # --- MODUL 2: DASHBOARD ADMIN ---
 elif menu == "📊 Dashboard Admin":
-    st.subheader("🛠 Pusat Kendali Admin")
-    
-    if "admin_logged_in" not in st.session_state:
-        st.session_state.admin_logged_in = False
+    if "logged_in" not in st.session_state: st.session_state.logged_in = False
 
-    if not st.session_state.admin_logged_in:
-        pw_input = st.text_input("Masukkan Kata Sandi Admin", type="password")
-        if st.button("Masuk"):
-            if pw_input == ADMIN_PASSWORD:
-                st.session_state.admin_logged_in = True
+    if not st.session_state.logged_in:
+        pw = st.text_input("Password Admin", type="password")
+        if st.button("Login"):
+            if pw == ADMIN_PASSWORD:
+                st.session_state.logged_in = True
                 st.rerun()
             else: st.error("Salah!")
         st.stop()
     
+    if st.sidebar.button("Logout Admin"):
+        st.session_state.logged_in = False
+        st.rerun()
+
     try:
         sheet = client.open(SHEET_NAME).sheet1
-        data_records = sheet.get_all_records()
-        tab1, tab2 = st.tabs(["🔍 Monitoring & Kirim Laporan", "📥 Import Excel"])
+        data = pd.DataFrame(sheet.get_all_records()).astype(str).replace('nan', '')
+        
+        tab1, tab2 = st.tabs(["🔍 Monitoring Data", "📥 Import & Template Excel"])
         
         with tab1:
-            if data_records:
-                df = pd.DataFrame(data_records)
-                st.dataframe(df, use_container_width=True)
-                
-                st.markdown("### 📤 Kirim Laporan Verifikasi Manual")
-                selected_nama = st.selectbox("Pilih Siswa untuk dikirimi laporan:", df['Nama Lengkap'].tolist())
-                siswa_data = df[df['Nama Lengkap'] == selected_nama].iloc[0]
-                
-                if st.button(f"Kirim Laporan untuk {selected_nama}"):
-                    pesan_verif = f"Yth. Wali Murid Ananda *{siswa_data['Nama Lengkap']}*,\n\nKami menginformasikan bahwa berkas pendaftaran dengan No. Reg: *{siswa_data['No. Registrasi']}* telah SELESAI DIVERIFIKASI.\n\nSilakan menunggu info selanjutnya. Terima kasih."
-                    wa_link = f"https://wa.me/{siswa_data['No. WhatsApp Wali']}?text={urllib.parse.quote(pesan_verif)}"
-                    st.markdown(f'<a href="{wa_link}" target="_blank">Klik di sini untuk mengirim pesan ke {siswa_data["No. WhatsApp Wali"]}</a>', unsafe_allow_html=True)
-            else: st.info("Kosong.")
+            st.metric("Total Pendaftar", len(data))
+            search = st.text_input("Cari Nama...")
+            if search: data = data[data['Nama Lengkap'].str.contains(search, case=False)]
+            st.dataframe(data, use_container_width=True)
+            st.download_button("📥 Download CSV", data.to_csv(index=False).encode('utf-8'), "Data_PPDB.csv", "text/csv")
 
         with tab2:
-            # (Fitur Import Excel tetap sama seperti sebelumnya)
-            df_template = pd.DataFrame(columns=KOLOM_DATABASE)
+            # Download Template
+            df_temp = pd.DataFrame(columns=KOLOM_DATABASE)
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                df_template.to_excel(writer, index=False)
-            st.download_button("📥 Unduh Template Excel", data=buffer.getvalue(), file_name="Template_PPDB.xlsx")
+                df_temp.to_excel(writer, index=False)
+            st.download_button("📥 1. Download Template Excel", buffer.getvalue(), "Template_PPDB.xlsx")
             
-    except Exception as e: st.error(f"Error: {e}")
+            st.markdown("---")
+            # Upload Excel
+            file_ex = st.file_uploader("📥 2. Upload Data Excel", type=['xlsx'])
+            if file_ex:
+                df_up = pd.read_excel(file_ex)
+                if st.button("Konfirmasi Import"):
+                    if list(df_up.columns) == KOLOM_DATABASE:
+                        sheet.append_rows(df_up.astype(str).replace('nan', '').values.tolist())
+                        st.success("Berhasil Import!"); st.rerun()
+                    else: st.error("Judul Kolom Excel Tidak Sesuai Template!")
+                    
+    except Exception as e: st.error(f"Gagal muat data: {e}")
