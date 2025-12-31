@@ -19,15 +19,8 @@ if 'auth' not in st.session_state:
     st.session_state['auth'] = False
 if 'temp_gallery' not in st.session_state:
     st.session_state['temp_gallery'] = []
-
-# Data Biodata di Navigasi (Bisa diedit Admin)
-if 'BIODATA_USER' not in st.session_state:
-    st.session_state['BIODATA_USER'] = {
-        "Nama": "Admin PPDB Al Irsyad",
-        "Biografi": "Staf administrasi KB-RA Al Irsyad Al Islamiyyah Kediri.",
-        "Foto": None # Base64 string
-    }
-
+if 'staff_data' not in st.session_state:
+    st.session_state['staff_data'] = [] # Untuk menyimpan profil guru/staff
 if 'INFO_LEMBAGA' not in st.session_state:
     st.session_state['INFO_LEMBAGA'] = {
         "Nama": "RA AL IRSYAD AL ISLAMIYYAH",
@@ -59,8 +52,7 @@ def get_image_base64(url):
 LOGO_LINK = "https://drive.google.com/file/d/1DOuK4dzVSLdzb8QewaFIzOL85IDWNP9P/view?usp=drive_link"
 LOGO_BASE64 = get_image_base64(LOGO_LINK)
 
-# --- LINK BACKGROUND LOGIN ---
-# Silakan ganti link ini dengan link gambar background Anda dari Drive
+# SILAKAN GANTI LINK INI DENGAN LINK GAMBAR BACKGROUND ANDA
 BG_LINK = "https://drive.google.com/file/d/1XW_CONTOH_LINK_BG_ANDA/view" 
 BG_BASE64 = get_image_base64(BG_LINK)
 
@@ -75,7 +67,8 @@ def init_google_sheets():
         else:
             creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
         return gspread.authorize(creds)
-    except: return None
+    except Exception as e:
+        st.error(f"Koneksi Gagal: {e}"); return None
 
 # --- 3. UI STYLING ---
 st.set_page_config(page_title="EMIS PPDB AL IRSYAD", page_icon="🏫", layout="wide")
@@ -86,11 +79,14 @@ if BG_BASE64:
     bg_style = f"""
     .login-bg {{
         background-image: linear-gradient(rgba(2, 132, 199, 0.7), rgba(2, 132, 199, 0.7)), url("data:image/png;base64,{BG_BASE64}");
-        background-size: cover; background-position: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
-    }}"""
+        background-size: cover;
+        background-position: center;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+    }}
+    """
 
 st.markdown(f"""
-    <style>
+<style>
     {bg_style}
     .stApp {{ background-color: #F8FAFC; }}
     .header-box {{ background-color: white; padding: 25px; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 25px; display: flex; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
@@ -100,9 +96,9 @@ st.markdown(f"""
     .section-title {{ background-color: #F8FAFC; padding: 12px; font-weight: bold; border-bottom: 2px solid #E2E8F0; margin-bottom: 15px; color: #0284C7; }}
     .stForm {{ background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #E2E8F0; }}
     .gallery-desc {{ font-size: 13px; color: #475569; margin-top: 5px; text-align: center; font-style: italic; font-weight: bold; }}
-    .login-card {{ background-color: white; padding: 40px; border-radius: 15px; border: 1px solid #E2E8F0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); max-width: 500px; margin: auto; text-align: center; }}
-    .nav-profile-img {{ border-radius: 50%; border: 3px solid #0284C7; width: 80px; height: 80px; object-fit: cover; margin-bottom: 10px; }}
-    </style>
+    .login-card {{ background-color: white; padding: 40px; border-radius: 15px; border: 1px solid #E2E8F0; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 500px; margin: auto; text-align: center; }}
+    .staff-card {{ background-color: white; padding: 15px; border-radius: 10px; border: 1px solid #E2E8F0; text-align: center; margin-bottom: 20px; }}
+</style>
 """, unsafe_allow_html=True)
 
 # --- HALAMAN LOGIN AWAL ---
@@ -112,10 +108,10 @@ if st.session_state['role'] is None:
     with st.container():
         st.markdown('<div class="login-card">', unsafe_allow_html=True)
         if LOGO_BASE64:
-            st.markdown(f'<img src="data:image/png;base64,{LOGO_BASE64}" width="100">', unsafe_allow_html=True)
-        st.markdown("<h2 style='color:#0284C7;'>SELAMAT DATANG</h2><h4>SISTEM INFORMASI PPDB ONLINE</h4><p>Silakan Pilih Akses Masuk</p><hr>", unsafe_allow_html=True)
+            st.markdown(f'<img src="data:image/png;base64,{LOGO_BASE64}" width="120">', unsafe_allow_html=True)
+        st.markdown("<h2>SISTEM INFORMASI PPDB</h2><h4>RA AL IRSYAD AL ISLAMIYYAH KEDIRI</h4><p>Silakan Pilih Akses Masuk</p>", unsafe_allow_html=True)
         col_l1, col_l2 = st.columns(2)
-        if col_l1.button("👤 WALI MURID", use_container_width=True):
+        if col_l1.button("👤 WALI MURID / USER", use_container_width=True):
             st.session_state['role'] = 'user'
             st.rerun()
         if col_l2.button("🔑 ADMINISTRATOR", use_container_width=True):
@@ -124,21 +120,20 @@ if st.session_state['role'] is None:
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# Validasi Password Admin
+# Validasi Admin Auth
 if st.session_state['role'] == 'admin_auth':
     st.markdown('<div class="login-bg"></div>', unsafe_allow_html=True)
     st.markdown("<br><br><br>", unsafe_allow_html=True)
     st.markdown('<div class="login-card">', unsafe_allow_html=True)
     st.subheader("Login Administrator")
-    pw_input = st.text_input("Masukkan Kata Sandi", type="password")
-    c_log1, c_log2 = st.columns(2)
-    if c_log1.button("✅ Masuk", use_container_width=True):
+    pw_input = st.text_input("Masukkan Kata Sandi Admin", type="password")
+    if st.button("Verifikasi & Masuk"):
         if pw_input == ADMIN_PASSWORD:
             st.session_state['role'] = 'admin'
             st.session_state['auth'] = True
             st.rerun()
-        else: st.error("Sandi Salah!")
-    if c_log2.button("⬅️ Kembali", use_container_width=True):
+        else: st.error("Kata Sandi Salah!")
+    if st.button("⬅️ Kembali"):
         st.session_state['role'] = None
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -146,37 +141,17 @@ if st.session_state['role'] == 'admin_auth':
 
 # --- SIDEBAR NAVIGASI DINAMIS ---
 with st.sidebar:
-    # --- BAGIAN BIODATA USER DI NAVIGASI ---
-    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-    if st.session_state['BIODATA_USER']['Foto']:
-        st.markdown(f'<img src="data:image/png;base64,{st.session_state["BIODATA_USER"]["Foto"]}" class="nav-profile-img">', unsafe_allow_html=True)
-    else:
-        st.markdown("👤", unsafe_allow_html=True) # Emoji jika foto kosong
-    
-    st.markdown(f"**{st.session_state['BIODATA_USER']['Nama']}**")
-    st.markdown(f"<div style='font-size: 11px; color: #64748B;'>{st.session_state['BIODATA_USER']['Biografi']}</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Edit Biodata Khusus Admin
-    if st.session_state['role'] == 'admin':
-        with st.expander("⚙️ Edit Profil Saya"):
-            new_name_user = st.text_input("Nama Profil", st.session_state['BIODATA_USER']['Nama'])
-            new_bio_user = st.text_area("Biografi Singkat", st.session_state['BIODATA_USER']['Biografi'])
-            up_foto_user = st.file_uploader("Upload Foto Profil", type=['jpg','png'])
-            if st.button("Update Profil"):
-                st.session_state['BIODATA_USER']['Nama'] = new_name_user
-                st.session_state['BIODATA_USER']['Biografi'] = new_bio_user
-                if up_foto_user:
-                    st.session_state['BIODATA_USER']['Foto'] = base64.b64encode(up_foto_user.getvalue()).decode()
-                st.rerun()
-
-    st.markdown("---")
-    nav_list = ["🏠 Profil Sekolah", "📝 Pendaftaran Siswa Baru", "📸 Galeri Sekolah"]
+    if LOGO_BASE64:
+        st.markdown(f'<div style="text-align: center;"><img src="data:image/png;base64,{LOGO_BASE64}" width="110"></div>', unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; color:#0284C7; font-weight:bold;'>MODE: {st.session_state['role'].upper()}</div>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    nav_list = ["🏠 Profil Sekolah", "📝 Pendaftaran Siswa Baru", "📸 Galeri Sekolah", "👨‍🏫 Profil Guru & Staf"]
     if st.session_state['role'] == 'admin': nav_list.append("🔐 Panel Admin")
-    menu = st.selectbox("MENU UTAMA", nav_list)
+    menu = st.selectbox("NAVIGASI UTAMA", nav_list)
     st.markdown("---")
-    if st.button("🚪 Keluar / Log Out"):
+    if st.button("🚪 Log Out / Keluar"):
         st.session_state['role'] = None
+        st.session_state['auth'] = False
         st.rerun()
 
 client = init_google_sheets()
@@ -262,7 +237,8 @@ elif menu == "📝 Pendaftaran Siswa Baru":
         tab_ay, tab_ib = st.tabs(["Data Ayah", "Data Ibu"])
         with tab_ay:
             ay1, ay2 = st.columns(2)
-            n_ay, nik_ay = ay1.text_input("Nama Ayah Kandung"), ay2.text_input("NIK Ayah")
+            n_ay = ay1.text_input("Nama Ayah Kandung")
+            nik_ay = ay2.text_input("NIK Ayah")
             tmp_ay = ay1.text_input("Tempat Lahir Ayah")
             tgl_ay = ay2.date_input("Tgl Lahir Ayah", key="ay", min_value=datetime(1945,1,1), max_value=datetime(2100,12,31))
             pend_ay = ay1.selectbox("Pendidikan Ayah", ["SD", "SMP", "SMA", "S1", "S2", "S3"])
@@ -270,7 +246,8 @@ elif menu == "📝 Pendaftaran Siswa Baru":
             gaj_ay = st.selectbox("Gaji Ayah", ["< 1 Juta", "1-3 Juta", "> 3 Juta"])
         with tab_ib:
             ib1, ib2 = st.columns(2)
-            n_ib, nik_ib = ib1.text_input("Nama Ibu Kandung"), ib2.text_input("NIK Ibu")
+            n_ib = ib1.text_input("Nama Ibu Kandung")
+            nik_ib = ib2.text_input("NIK Ibu")
             tmp_ib = ib1.text_input("Tempat Lahir Ibu")
             tgl_ib = ib2.date_input("Tgl Lahir Ibu", key="ib", min_value=datetime(1945,1,1), max_value=datetime(2100,12,31))
             pend_ib = ib1.selectbox("Pendidikan Ibu", ["SD", "SMP", "SMA", "S1", "S2", "S3"])
@@ -292,11 +269,13 @@ elif menu == "📝 Pendaftaran Siswa Baru":
                 try:
                     sheet = client.open(SHEET_NAME).sheet1
                     reg_id = f"REG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                    row = [reg_id, nama, nisn, nis_lokal, kwn, f"'{nik_s}", str(tgl_s), tmp_s, jk, saudara, anak_ke, agama, f"'{no_kk}", nama_kepala_kk, no_wa, n_ay, f"'{nik_ay}", tmp_ay, str(tgl_ay), pend_ay, pek_ay, gaj_ay, n_ib, f"'{nik_ib}", tmp_ib, str(tgl_ib), pend_ib, pek_ib, gaj_ib, st_rumah, prov, kota, kec, kel, alamat, kode_pos, datetime.now().strftime("%Y-%m-%d"), "Belum Diverifikasi"]
-                    sheet.append_row(row)
+                    wa_fix = no_wa.replace("08", "628", 1) if no_wa.startswith("08") else no_wa
+                    row_data = [
+                        reg_id, nama, nisn, nis_lokal, kwn, f"'{nik_s}", str(tgl_s), tmp_s, jk, saudara, anak_ke, agama, f"'{no_kk}", nama_kepala_kk, no_wa, n_ay, f"'{nik_ay}", tmp_ay, str(tgl_ay), pend_ay, pek_ay, gaj_ay, n_ib, f"'{nik_ib}", tmp_ib, str(tgl_ib), pend_ib, pek_ib, gaj_ib, st_rumah, prov, kota, kec, kel, alamat, kode_pos, datetime.now().strftime("%Y-%m-%d"), "Belum Diverifikasi"
+                    ]
+                    sheet.append_row(row_data)
                     st.success(f"Berhasil! No Reg: {reg_id}")
-                    pesan_wa = urllib.parse.quote(f"Pendaftaran Ananda {nama} Berhasil. No Reg: {reg_id}")
-                    wa_url = f"https://wa.me/{no_wa}?text={pesan_wa}"
+                    wa_url = f"https://wa.me/{no_wa}?text=Pendaftaran%20Ananda%20{nama}%20Berhasil"
                     st.markdown(f'<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 20px; border-radius:8px; border:none; cursor:pointer;">📲 Konfirmasi WA</button></a>', unsafe_allow_html=True)
                 except: st.error("Database Gagal.")
             else: st.warning("Isi semua data wajib (*)")
@@ -322,6 +301,52 @@ elif menu == "📸 Galeri Sekolah":
                 st.markdown(f"<div class='gallery-desc'>{item['desc']}</div>", unsafe_allow_html=True)
     else: st.info("Belum ada foto.")
 
+# 5. HALAMAN PROFIL GURU & STAF (NEW)
+elif menu == "👨‍🏫 Profil Guru & Staf":
+    st.markdown('<div class="section-title">👨‍🏫 PROFIL GURU & TENAGA KEPENDIDIKAN</div>', unsafe_allow_html=True)
+    
+    if st.session_state['role'] == 'admin':
+        with st.expander("➕ Tambah Guru / Tendik (Admin Only)"):
+            with st.form("add_staff_form"):
+                staff_name = st.text_input("Nama Lengkap & Gelar")
+                staff_photo = st.file_uploader("Foto Profil", type=['jpg', 'png', 'jpeg'])
+                staff_bio = st.text_area("Biografi Singkat / Jabatan")
+                # Saran tambahan profesional
+                st.caption("Saran: Isi dengan pendidikan terakhir, pengalaman mengajar, atau motto hidup.")
+                
+                if st.form_submit_button("Simpan Profil"):
+                    if staff_name and staff_photo:
+                        enc_photo = base64.b64encode(staff_photo.getvalue()).decode()
+                        st.session_state['staff_data'].append({
+                            "id": datetime.now().timestamp(),
+                            "name": staff_name,
+                            "photo": enc_photo,
+                            "bio": staff_bio
+                        })
+                        st.success("Profil Berhasil Ditambahkan!")
+                        st.rerun()
+                    else: st.error("Nama dan Foto wajib ada!")
+
+    if st.session_state['staff_data']:
+        cols = st.columns(3)
+        for i, staff in enumerate(st.session_state['staff_data']):
+            with cols[i % 3]:
+                st.markdown('<div class="staff-card">', unsafe_allow_html=True)
+                st.image(f"data:image/png;base64,{staff['photo']}", use_container_width=True)
+                st.markdown(f"#### {staff['name']}")
+                st.write(staff['bio'])
+                
+                if st.session_state['role'] == 'admin':
+                    c_edit, c_del = st.columns(2)
+                    if c_del.button("🗑️ Hapus", key=f"del_{staff['id']}"):
+                        st.session_state['staff_data'].pop(i)
+                        st.rerun()
+                    if c_edit.button("✏️ Edit", key=f"edit_{staff['id']}"):
+                        st.session_state['editing_staff_id'] = staff['id']
+                st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.info("Data guru dan staf belum tersedia.")
+
 # 4. PANEL ADMIN
 elif menu == "🔐 Panel Admin":
     st.markdown('<div class="section-title">DATABASE PENDAFTAR</div>', unsafe_allow_html=True)
@@ -329,7 +354,7 @@ elif menu == "🔐 Panel Admin":
         sheet = client.open(SHEET_NAME).sheet1
         all_val = sheet.get_all_values()
         df = pd.DataFrame(all_val[1:], columns=all_val[0])
-        tab1, tab2 = st.tabs(["🔍 Monitoring", "✏️ Edit"])
+        tab1, tab2 = st.tabs(["🔍 Monitoring Data", "✏️ Edit Pendaftar"])
         with tab1: st.dataframe(df, use_container_width=True)
         with tab2:
             search = st.text_input("Cari Nama/Reg")
