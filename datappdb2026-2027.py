@@ -89,7 +89,7 @@ def init_google_sheets():
     except: return None
 
 # --- UI STYLING ---
-st.set_page_config(page_title="EMIS PPDB AL IRSYAD", page_icon="🏫", layout="wide")
+st.set_page_config(page_title="PORTAL PPDB KB RA AL IRSYAD AL ISLAIMYYAH KEDIRI", page_icon="🏫", layout="wide")
 
 st.markdown(f"""
 <style>
@@ -188,7 +188,6 @@ if menu == "🏠 Profil Sekolah":
         with col_L:
             st.markdown(f"""<table class="emis-table">
                 <tr><td class="label-emis">KEPALA MADRASAH</td><td>: {st.session_state['INFO_LEMBAGA']['Kepala']}</td></tr>
-                <tr><td class="label-emis">KODE REGISTRASI</td><td>: 4qdb8eeqOc</td></tr>
                 <tr><td class="label-emis">NAMA PENYELENGGARA</td><td>: {st.session_state['INFO_LEMBAGA']['Penyelenggara']}</td></tr>
                 <tr><td class="label-emis">AFILIASI ORGANISASI</td><td>: {st.session_state['INFO_LEMBAGA']['Afiliasi Keagamaan']}</td></tr>
                 <tr><td class="label-emis">WAKTU BELAJAR</td><td>: {st.session_state['INFO_LEMBAGA']['Waktu Belajar']}</td></tr>
@@ -220,7 +219,7 @@ if menu == "🏠 Profil Sekolah":
 elif menu == "📝 Pendaftaran Siswa Baru":
     st.markdown('<h3>Formulir Pendaftaran</h3>', unsafe_allow_html=True)
     with st.form("ppdb_full", clear_on_submit=True):
-        st.markdown("##### I. IDENTITAS SISWA")
+        st.markdown(" I. IDENTITAS SISWA")
         c1, c2 = st.columns(2)
         nama = c1.text_input("Nama Lengkap Siswa*")
         nisn = c2.text_input("NISN / Rombel")
@@ -237,7 +236,7 @@ elif menu == "📝 Pendaftaran Siswa Baru":
         n_kepala = c1.text_input("Kepala Keluarga")
         no_wa = c2.text_input("WA Wali*")
 
-        st.markdown("<br>##### II. ORANG TUA", unsafe_allow_html=True)
+        st.markdown("<br> II. ORANG TUA", unsafe_allow_html=True)
         t1, t2 = st.tabs(["Ayah", "Ibu"])
         with t1:
             ay1, ay2 = st.columns(2)
@@ -252,7 +251,7 @@ elif menu == "📝 Pendaftaran Siswa Baru":
             tgl_ib = ib1.date_input("Tgl Lahir Ibu", min_value=datetime(1945,1,1), key="ib")
             pek_ib, gaj_ib = ib2.text_input("Pekerjaan Ibu"), ib1.selectbox("Gaji Ibu", ["< 1 Jt", "1-3 Jt", "> 3 Jt"], key="gib")
 
-        st.markdown("<br>##### III. ALAMAT", unsafe_allow_html=True)
+        st.markdown("<br> III. ALAMAT", unsafe_allow_html=True)
         st_r = st.selectbox("Status Rumah", ["Milik Sendiri", "Kontrak", "Lainnya"])
         prov, kab = c1.text_input("Provinsi", "Jawa Timur"), c2.text_input("Kabupaten", "Kediri")
         alamat = st.text_area("Alamat Lengkap")
