@@ -20,10 +20,10 @@ ALAMAT_SEKOLAH = {
     "Kodepos": "64129",
     "Telepon": "(0354) 682524",
     "Instagram": "https://instagram.com/alirsyad_kediri",
-    "Maps_Embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3952.682662243464!2d112.01255557416183!3d-7.823376577695383!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e78570e932338d1%3A0x6334a17088b7764e!2sRA%20Al%20Irsyad!5e0!3m2!1sid!2sid!4v1710000000000!5m2!1sid!2sid"
+    "Maps_Embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3952.597573039148!2d112.0125555!3d-7.831298!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e785706509a2503%3A0x676e2555555e6767!2sRA%20AL%20IRSYAD!5e0!3m2!1sid!2sid!4v1700000000000"
 }
 
-# --- KLASTER GAMBAR (LOGO & GALERI) ---
+# --- KLASTER GAMBAR (LOGO & BASE64) ---
 @st.cache_data
 def get_image_base64(url):
     try:
@@ -40,12 +40,6 @@ def get_image_base64(url):
 
 LOGO_LINK = "https://drive.google.com/file/d/1DOuK4dzVSLdzb8QewaFIzOL85IDWNP9P/view?usp=drive_link"
 LOGO_BASE64 = get_image_base64(LOGO_LINK)
-
-# Placeholder link foto (Silakan ganti dengan link asli Anda)
-LIST_FOTO_KEGIATAN = [
-    {"judul": "Kegiatan Belajar", "url": "LINK_FOTO_1"},
-    {"judul": "Guru & Staf", "url": "LINK_FOTO_2"}
-]
 
 # --- 2. FUNGSI KONEKSI ---
 @st.cache_resource
@@ -86,10 +80,12 @@ st.markdown(f"""
         background-color: #E0F2FE; color: #0369A1; padding: 12px;
         border-radius: 8px; font-weight: bold; margin-bottom: 15px; border-left: 5px solid #0284C7;
     }}
-    .emis-card {{
+    .dashboard-card {{
         background-color: white; padding: 20px; border-radius: 12px;
-        border: 1px solid #E2E8F0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px;
+        border: 1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); text-align: center;
     }}
+    .stat-title {{ color: #64748B; font-size: 14px; font-weight: 500; }}
+    .stat-value {{ color: #0284C7; font-size: 24px; font-weight: bold; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -99,7 +95,6 @@ with st.sidebar:
         st.markdown(f'<div style="text-align: center;"><img src="data:image/png;base64,{LOGO_BASE64}" width="110"></div>', unsafe_allow_html=True)
     st.markdown(f"<div style='text-align:center; font-size:12px; color:#64748B; margin-bottom:15px;'><b>{ALAMAT_SEKOLAH['Nama']}</b></div>", unsafe_allow_html=True)
     
-    # Menu Navigasi Terpisah
     st.markdown("### 🛠 NAVIGASI")
     menu = st.selectbox("Pilih Menu", ["🏠 Profil & Dashboard", "📝 Pendaftaran Siswa Baru", "📸 Galeri Sekolah", "🔐 Panel Admin"])
     
@@ -116,30 +111,52 @@ st.markdown(f"""<div class="emis-header">
 client = init_google_sheets()
 if not client: st.stop()
 
-# --- MODUL 0: PROFIL & DASHBOARD ---
+# --- MODUL 0: PROFIL & DASHBOARD (DIREVISI AGAR MENARIK) ---
 if menu == "🏠 Profil & Dashboard":
-    st.markdown('<div class="section-header-emis">DASHBOARD UTAMA & PROFIL</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header-emis">DASHBOARD UTAMA & PROFIL LEMBAGA</div>', unsafe_allow_html=True)
+    
+    # Baris Statistik Singkat
+    s1, s2, s3 = st.columns(3)
+    with s1:
+        st.markdown('<div class="dashboard-card"><p class="stat-title">Status PPDB</p><p class="stat-value">Buka</p></div>', unsafe_allow_html=True)
+    with s2:
+        st.markdown('<div class="dashboard-card"><p class="stat-title">Tahun Ajaran</p><p class="stat-value">2026/2027</p></div>', unsafe_allow_html=True)
+    with s3:
+        st.markdown('<div class="dashboard-card"><p class="stat-title">Akreditasi</p><p class="stat-value">A (Unggul)</p></div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Baris Profil dan Visi Misi
     c1, c2 = st.columns([2, 1])
     with c1:
-        st.markdown(f"""<div class="emis-card">
-            <h3>Selamat Datang di Portal PPDB</h3>
-            <p>Silakan gunakan menu di samping untuk memulai pendaftaran atau melihat informasi sekolah.</p>
+        st.markdown(f"""<div style="background-color: white; padding: 25px; border-radius: 12px; border: 1px solid #E2E8F0;">
+            <h3 style="color: #0284C7;">Tentang Kami</h3>
+            <p style="line-height: 1.6; color: #334155;">
+                <b>{ALAMAT_SEKOLAH['Nama']}</b> adalah lembaga pendidikan anak usia dini yang berfokus pada pembentukan karakter islami, 
+                kemandirian, dan kreativitas siswa. Kami mengintegrasikan kurikulum nasional dengan nilai-nilai ketauhidan untuk mencetak generasi Rabbani.
+            </p>
             <hr>
-            <h4>Visi Sekolah</h4>
-            <p><i>"Mewujudkan generasi bertakwa, cerdas, dan berkarakter islami."</i></p>
+            <h4 style="color: #0284C7;">Visi Sekolah</h4>
+            <p style="color: #475569; font-style: italic;">"Mewujudkan generasi bertakwa, cerdas, terampil, dan berkarakter islami yang siap menyongsong masa depan."</p>
         </div>""", unsafe_allow_html=True)
+    
     with c2:
-        st.markdown(f"""<div class="emis-card" style="background-color: #F0F9FF;">
-            <b>📞 Kontak Bantuan:</b><br>{ALAMAT_SEKOLAH['Telepon']}<br>
-            <b>📍 Alamat:</b><br>{ALAMAT_SEKOLAH['Jalan']}
+        st.markdown(f"""<div style="background-color: #F0F9FF; padding: 25px; border-radius: 12px; border: 1px solid #BAE6FD;">
+            <h4 style="color: #0369A1;">Info Pendaftaran</h4>
+            <ul style="color: #0C4A6E; font-size: 14px;">
+                <li>Scan KK & Akta Kelahiran</li>
+                <li>Isi form di menu pendaftaran</li>
+                <li>Konfirmasi WhatsApp Panitia</li>
+                <li>Verifikasi Berkas Fisik</li>
+            </ul>
+            <br>
+            <p style="font-size: 12px; color: #0369A1;"><b>Kontak Panitia:</b><br>{ALAMAT_SEKOLAH['Telepon']}</p>
         </div>""", unsafe_allow_html=True)
 
-# --- MODUL 1: PENDAFTARAN (37 KOLOM LENGKAP) ---
+# --- MODUL 1: PENDAFTARAN (37 KOLOM LENGKAP - TIDAK BERUBAH) ---
 elif menu == "📝 Pendaftaran Siswa Baru":
     st.markdown('<div class="section-header-emis">FORMULIR PENDAFTARAN (LENGKAP 37 KOLOM)</div>', unsafe_allow_html=True)
     with st.form("form_ppdb", clear_on_submit=True):
-        
-        # BAGIAN I: DATA SISWA
         st.markdown("##### I. DATA SISWA")
         col1, col2 = st.columns(2)
         nama = col1.text_input("Nama Lengkap*")
@@ -157,7 +174,6 @@ elif menu == "📝 Pendaftaran Siswa Baru":
         kepala_kk = col1.text_input("Nama Kepala Keluarga")
         no_wa = col2.text_input("Nomor WhatsApp Aktif (08...)*")
 
-        # BAGIAN II: DATA KELUARGA
         st.markdown("<br>##### II. DATA KELUARGA", unsafe_allow_html=True)
         t1, t2 = st.tabs(["Data Ayah", "Data Ibu"])
         with t1:
@@ -173,7 +189,6 @@ elif menu == "📝 Pendaftaran Siswa Baru":
             pend_i, pek_i = ib1.selectbox("Pendidikan Ibu", ["SD", "SMP", "SMA", "S1", "S2"]), ib2.text_input("Pekerjaan Ibu")
             gaji_i = st.number_input("Penghasilan Ibu", min_value=0)
 
-        # BAGIAN III: ALAMAT
         st.markdown("<br>##### III. DATA ALAMAT", unsafe_allow_html=True)
         st_rmh = st.selectbox("Status Rumah", ["Milik Sendiri", "Kontrak", "Lainnya"])
         prov, kota = col1.text_input("Provinsi", value="Jawa Timur"), col2.text_input("Kota", value="Kediri")
@@ -185,8 +200,6 @@ elif menu == "📝 Pendaftaran Siswa Baru":
                     sheet = client.open(SHEET_NAME).sheet1
                     reg_id = f"REG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                     wa_fix = no_wa.replace("08", "628", 1) if no_wa.startswith("08") else no_wa
-                    
-                    # DATA LENGKAP 37 KOLOM
                     row = [
                         reg_id, nama, nisn, nis_lokal, kwn, f"'{nik_s}", str(tgl_s), tmp_s, jk, saudara, anak_ke,
                         agama, f"'{no_kk}", kepala_kk, wa_fix, n_ayah, f"'{nik_a}", tmp_a, str(tgl_a), pend_a, pek_a, gaji_a,
@@ -200,13 +213,8 @@ elif menu == "📝 Pendaftaran Siswa Baru":
 
 # --- MODUL 2: GALERI ---
 elif menu == "📸 Galeri Sekolah":
-    st.markdown('<div class="section-header-emis">GALERI FOTO KEGIATAN & GURU</div>', unsafe_allow_html=True)
-    st.info("Fitur Galeri: Menampilkan foto kegiatan anak-anak dan profil guru.")
-    cols = st.columns(2)
-    with cols[0]:
-        st.markdown('<div class="emis-card"><b>🖼️ Kegiatan Anak</b><br>Tampilkan foto aktivitas belajar di sini.</div>', unsafe_allow_html=True)
-    with cols[1]:
-        st.markdown('<div class="emis-card"><b>👨‍🏫 Profil Guru</b><br>Tampilkan foto tenaga pendidik di sini.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header-emis">GALERI FOTO KEGIATAN & PROFIL GURU</div>', unsafe_allow_html=True)
+    st.info("Fitur Galeri: Segera hadir dengan dokumentasi kegiatan terbaru.")
 
 # --- MODUL 3: ADMIN ---
 elif menu == "🔐 Panel Admin":
