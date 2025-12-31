@@ -12,22 +12,23 @@ import base64
 SHEET_NAME = "Database PPDB AL IRSYAD KEDIRI" 
 ADMIN_PASSWORD = "adminirsyad" 
 
-# --- DATA LEMBAGA (UNTUK TAMPILAN PROFIL EMIS) ---
-INFO_LEMBAGA = {
-    "Nama": "RA AL IRSYAD AL ISLAMIYYAH",
-    "NSM": "101235710017",
-    "NPSN": "69749712",
-    "Status": "Swasta",
-    "Bentuk SP": "RA",
-    "Kepala": "IMROATUS SOLIKHAH",
-    "Alamat": "Jl. Letjend Suprapto No.21, Kel. Pakelan",
-    "Kecamatan": "Kota",
-    "Kabupaten": "Kota Kediri",
-    "Provinsi": "Jawa Timur",
-    "Kode Pos": "64129",
-    "Telepon": "(0354) 682524",
-    "Email": "ra.alirsyad.kediri@gmail.com"
-}
+# --- DATA LEMBAGA (DIPINDAHKAN KE SESSION STATE AGAR BISA DIEDIT) ---
+if 'INFO_LEMBAGA' not in st.session_state:
+    st.session_state['INFO_LEMBAGA'] = {
+        "Nama": "RA AL IRSYAD AL ISLAMIYYAH",
+        "NSM": "101235710017",
+        "NPSN": "69749712",
+        "Status": "Swasta",
+        "Bentuk SP": "RA",
+        "Kepala": "IMROATUS SOLIKHAH",
+        "Alamat": "Jl. Letjend Suprapto No.21, Kel. Pakelan",
+        "Kecamatan": "Kota",
+        "Kabupaten": "Kota Kediri",
+        "Provinsi": "Jawa Timur",
+        "Kode Pos": "64129",
+        "Telepon": "(0354) 682524",
+        "Email": "ra.alirsyad.kediri@gmail.com"
+    }
 
 # --- KLASTER GAMBAR (BASE64) ---
 @st.cache_data
@@ -76,9 +77,10 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# Inisialisasi session state untuk galeri foto agar bisa diakses antar halaman
 if 'temp_gallery' not in st.session_state:
     st.session_state['temp_gallery'] = []
+if 'auth' not in st.session_state:
+    st.session_state['auth'] = False
 
 # --- SIDEBAR NAVIGASI ---
 with st.sidebar:
@@ -90,7 +92,7 @@ with st.sidebar:
         ["🏠 Profil Sekolah", "📝 Pendaftaran Siswa Baru", "📸 Galeri Sekolah", "🔐 Panel Admin"]
     )
     st.markdown("---")
-    st.markdown(f"**Lembaga:** {INFO_LEMBAGA['Nama']}")
+    st.markdown(f"**Lembaga:** {st.session_state['INFO_LEMBAGA']['Nama']}")
     st.markdown(f"**Periode:** 2026/2027 Ganjil")
 
 client = init_google_sheets()
@@ -102,42 +104,80 @@ if menu == "🏠 Profil Sekolah":
     <div class="header-box">
         <img src="data:image/png;base64,{LOGO_BASE64}" width="90" style="margin-right:25px;">
         <div>
-            <h2 style="margin:0; color:#1E293B; font-family: sans-serif;">{INFO_LEMBAGA['Nama']}</h2>
+            <h2 style="margin:0; color:#1E293B; font-family: sans-serif;">{st.session_state['INFO_LEMBAGA']['Nama']}</h2>
             <p style="margin:0; color:#64748B; font-size: 15px;">
-                NSM: {INFO_LEMBAGA['NSM']} &nbsp; | &nbsp; STATUS: {INFO_LEMBAGA['Status']} &nbsp; | &nbsp; NPSN: {INFO_LEMBAGA['NPSN']}
+                NSM: {st.session_state['INFO_LEMBAGA']['NSM']} &nbsp; | &nbsp; STATUS: {st.session_state['INFO_LEMBAGA']['Status']} &nbsp; | &nbsp; NPSN: {st.session_state['INFO_LEMBAGA']['NPSN']}
             </p>
-            <p style="margin-top:8px; font-size:14px; color: #0284C7;">📞 {INFO_LEMBAGA['Telepon']} &nbsp; | &nbsp; ✉️ {INFO_LEMBAGA['Email']}</p>
+            <p style="margin-top:8px; font-size:14px; color: #0284C7;">📞 {st.session_state['INFO_LEMBAGA']['Telepon']} &nbsp; | &nbsp; ✉️ {st.session_state['INFO_LEMBAGA']['Email']}</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
+    # --- INFORMASI UMUM DENGAN FITUR EDIT ADMIN ---
     st.markdown('<div style="background-color:white; padding:25px; border-radius:12px; border:1px solid #E2E8F0;">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">INFORMASI UMUM LEMBAGA</div>', unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"""
-        <table class="emis-table">
-            <tr><td class="label-emis">KEPALA MADRASAH</td><td>: {INFO_LEMBAGA['Kepala']}</td></tr>
-            <tr><td class="label-emis">NAMA PENYELENGGARA</td><td>: {INFO_LEMBAGA['Nama']} KOTA KEDIRI</td></tr>
-            <tr><td class="label-emis">BENTUK PENDIDIKAN</td><td>: {INFO_LEMBAGA['Bentuk SP']}</td></tr>
-            <tr><td class="label-emis">WAKTU BELAJAR</td><td>: Pagi / 6 Hari</td></tr>
-        </table>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-        <table class="emis-table">
-            <tr><td class="label-emis">ALAMAT LENGKAP</td><td>: {INFO_LEMBAGA['Alamat']}</td></tr>
-            <tr><td class="label-emis">KECAMATAN / KOTA</td><td>: {INFO_LEMBAGA['Kecamatan']} / {INFO_LEMBAGA['Kabupaten']}</td></tr>
-            <tr><td class="label-emis">PROVINSI</td><td>: {INFO_LEMBAGA['Provinsi']}</td></tr>
-            <tr><td class="label-emis">KODE POS</td><td>: {INFO_LEMBAGA['Kode Pos']}</td></tr>
-        </table>
-        """, unsafe_allow_html=True)
+    col_header_left, col_header_right = st.columns([4, 1])
+    with col_header_left:
+        st.markdown('<div class="section-title">INFORMASI UMUM LEMBAGA</div>', unsafe_allow_html=True)
     
-    # --- TAMBAHAN: MENAMPILKAN FOTO DARI GALERI DI HALAMAN PROFIL ---
+    # Tombol Edit Muncul Hanya jika Admin Login
+    show_edit_form = False
+    if st.session_state['auth']:
+        with col_header_right:
+            if st.button("✏️ Edit Profil"):
+                st.session_state['editing_profile'] = True
+    
+    if st.session_state.get('editing_profile', False) and st.session_state['auth']:
+        with st.form("edit_profil_lembaga"):
+            st.info("Mode Edit: Perbarui informasi umum sekolah Anda.")
+            c1, c2 = st.columns(2)
+            new_nama = c1.text_input("Nama Lembaga", value=st.session_state['INFO_LEMBAGA']['Nama'])
+            new_kepala = c2.text_input("Kepala Madrasah", value=st.session_state['INFO_LEMBAGA']['Kepala'])
+            new_nsm = c1.text_input("NSM", value=st.session_state['INFO_LEMBAGA']['NSM'])
+            new_npsn = c2.text_input("NPSN", value=st.session_state['INFO_LEMBAGA']['NPSN'])
+            new_alamat = c1.text_input("Alamat", value=st.session_state['INFO_LEMBAGA']['Alamat'])
+            new_kec = c2.text_input("Kecamatan", value=st.session_state['INFO_LEMBAGA']['Kecamatan'])
+            new_kab = c1.text_input("Kabupaten/Kota", value=st.session_state['INFO_LEMBAGA']['Kabupaten'])
+            new_telp = c2.text_input("Telepon", value=st.session_state['INFO_LEMBAGA']['Telepon'])
+            new_email = c1.text_input("Email", value=st.session_state['INFO_LEMBAGA']['Email'])
+            
+            save_cols = st.columns([1,1,4])
+            if save_cols[0].form_submit_button("💾 Simpan"):
+                st.session_state['INFO_LEMBAGA'].update({
+                    "Nama": new_nama, "Kepala": new_kepala, "NSM": new_nsm, "NPSN": new_npsn,
+                    "Alamat": new_alamat, "Kecamatan": new_kec, "Kabupaten": new_kab,
+                    "Telepon": new_telp, "Email": new_email
+                })
+                st.session_state['editing_profile'] = False
+                st.success("Informasi Lembaga Diperbarui!")
+                st.rerun()
+            if save_cols[1].form_submit_button("❌ Batal"):
+                st.session_state['editing_profile'] = False
+                st.rerun()
+    else:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"""
+            <table class="emis-table">
+                <tr><td class="label-emis">KEPALA MADRASAH</td><td>: {st.session_state['INFO_LEMBAGA']['Kepala']}</td></tr>
+                <tr><td class="label-emis">NAMA PENYELENGGARA</td><td>: {st.session_state['INFO_LEMBAGA']['Nama']} KOTA KEDIRI</td></tr>
+                <tr><td class="label-emis">BENTUK PENDIDIKAN</td><td>: {st.session_state['INFO_LEMBAGA']['Bentuk SP']}</td></tr>
+                <tr><td class="label-emis">WAKTU BELAJAR</td><td>: Pagi / 6 Hari</td></tr>
+            </table>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <table class="emis-table">
+                <tr><td class="label-emis">ALAMAT LENGKAP</td><td>: {st.session_state['INFO_LEMBAGA']['Alamat']}</td></tr>
+                <tr><td class="label-emis">KECAMATAN / KOTA</td><td>: {st.session_state['INFO_LEMBAGA']['Kecamatan']} / {st.session_state['INFO_LEMBAGA']['Kabupaten']}</td></tr>
+                <tr><td class="label-emis">PROVINSI</td><td>: {st.session_state['INFO_LEMBAGA']['Provinsi']}</td></tr>
+                <tr><td class="label-emis">KODE POS</td><td>: {st.session_state['INFO_LEMBAGA']['Kode Pos']}</td></tr>
+            </table>
+            """, unsafe_allow_html=True)
+    
     if st.session_state['temp_gallery']:
         st.markdown('<br><div class="section-title">DOKUMENTASI KEGIATAN TERBARU</div>', unsafe_allow_html=True)
-        cols_profile = st.columns(4) # Tampilan lebih kecil (4 kolom) untuk profil
+        cols_profile = st.columns(4)
         for idx, img_b64 in enumerate(st.session_state['temp_gallery']):
             with cols_profile[idx % 4]:
                 st.image(f"data:image/png;base64,{img_b64}", use_container_width=True)
@@ -146,7 +186,6 @@ if menu == "🏠 Profil Sekolah":
 
 elif menu == "📝 Pendaftaran Siswa Baru":
     st.markdown('<h3 style="color: #0284C7;">Formulir Pendaftaran Peserta Didik Baru</h3>', unsafe_allow_html=True)
-    
     with st.form("ppdb_full_form", clear_on_submit=True):
         st.markdown("##### I. IDENTITAS PESERTA DIDIK")
         c1, c2 = st.columns(2)
@@ -167,7 +206,6 @@ elif menu == "📝 Pendaftaran Siswa Baru":
 
         st.markdown("<br>##### II. DATA ORANG TUA KANDUNG", unsafe_allow_html=True)
         tab_ayah, tab_ibu = st.tabs(["Data Ayah", "Data Ibu"])
-        
         with tab_ayah:
             ay1, ay2 = st.columns(2)
             n_ayah = ay1.text_input("Nama Ayah Kandung")
@@ -177,7 +215,6 @@ elif menu == "📝 Pendaftaran Siswa Baru":
             pend_ayah = ay1.selectbox("Pendidikan Terakhir Ayah", ["SD", "SMP", "SMA", "D3", "S1", "S2", "S3"])
             pek_ayah = ay2.text_input("Pekerjaan Ayah")
             gaji_ayah = st.selectbox("Penghasilan Bulanan Ayah", ["< 1 Juta", "1 - 3 Juta", "3 - 5 Juta", "> 5 Juta"])
-
         with tab_ibu:
             ib1, ib2 = st.columns(2)
             n_ibu = ib1.text_input("Nama Ibu Kandung")
@@ -198,9 +235,7 @@ elif menu == "📝 Pendaftaran Siswa Baru":
         alamat_lengkap = st.text_area("Alamat Lengkap (Jalan, RT/RW, No. Rumah)")
         kode_pos = st.text_input("Kode Pos")
 
-        submit = st.form_submit_button("KIRIM DATA PENDAFTARAN")
-        
-        if submit:
+        if st.form_submit_button("KIRIM DATA PENDAFTARAN"):
             if nama and nik_siswa and no_wa:
                 try:
                     sheet = client.open(SHEET_NAME).sheet1
@@ -220,15 +255,12 @@ elif menu == "📝 Pendaftaran Siswa Baru":
                     pesan_wa = urllib.parse.quote(f"Assalamu'alaikum, Saya wali murid dari {nama}. No Reg: {reg_id}")
                     wa_url = f"https://wa.me/{wa_fix}?text={pesan_wa}"
                     st.markdown(f'<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;">📲 Konfirmasi via WhatsApp</button></a>', unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"Terjadi kesalahan: {e}")
+                except Exception as e: st.error(f"Terjadi kesalahan: {e}")
 
 elif menu == "📸 Galeri Sekolah":
     st.markdown('<div class="section-title">📸 GALERI KEGIATAN SISWA & GURU</div>', unsafe_allow_html=True)
-    
     st.markdown("##### 📤 Tambah Foto Baru")
     uploaded_files = st.file_uploader("Pilih foto kegiatan (JPG/PNG)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
-    
     if st.button("Tampilkan di Galeri"):
         if uploaded_files:
             for uploaded_file in uploaded_files:
@@ -236,71 +268,47 @@ elif menu == "📸 Galeri Sekolah":
                 encoded = base64.b64encode(bytes_data).decode()
                 st.session_state['temp_gallery'].append(encoded)
             st.success(f"Berhasil mengunggah {len(uploaded_files)} foto.")
-        else:
-            st.warning("Silakan pilih file terlebih dahulu.")
-
+        else: st.warning("Silakan pilih file terlebih dahulu.")
     st.markdown("---")
-    
     if st.session_state['temp_gallery']:
         cols = st.columns(3)
         for index, img_data in enumerate(st.session_state['temp_gallery']):
-            with cols[index % 3]:
-                st.image(f"data:image/png;base64,{img_data}", use_container_width=True)
-    else:
-        st.info("Belum ada foto yang diunggah. Silakan unggah foto di atas.")
+            with cols[index % 3]: st.image(f"data:image/png;base64,{img_data}", use_container_width=True)
+    else: st.info("Belum ada foto yang diunggah.")
 
 elif menu == "🔐 Panel Admin":
-    if "auth" not in st.session_state: st.session_state.auth = False
-    if not st.session_state.auth:
+    if not st.session_state['auth']:
         pw = st.text_input("Masukkan Password Admin", type="password")
         if st.button("Login"):
             if pw == ADMIN_PASSWORD:
-                st.session_state.auth = True
+                st.session_state['auth'] = True
                 st.rerun()
-            else:
-                st.error("Password Salah!")
+            else: st.error("Password Salah!")
         st.stop()
     
+    st.sidebar.button("Log Out", on_click=lambda: st.session_state.update({'auth': False}))
     st.markdown('<div class="section-title">DATABASE PENDAFTAR (ADMIN)</div>', unsafe_allow_html=True)
-    
     try:
         sheet = client.open(SHEET_NAME).sheet1
         all_data = sheet.get_all_values()
-        headers = all_data[0]
-        rows = all_data[1:]
+        headers, rows = all_data[0], all_data[1:]
         df = pd.DataFrame(rows, columns=headers)
-
         tab_view, tab_edit = st.tabs(["🔍 Lihat Data", "✏️ Edit/Perbarui Data"])
-
         with tab_view:
             st.dataframe(df, use_container_width=True)
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Ekspor CSV", csv, "Data_PPDB.csv", "text/csv")
-
+            st.download_button("📥 Ekspor CSV", df.to_csv(index=False).encode('utf-8'), "Data_PPDB.csv", "text/csv")
         with tab_edit:
-            st.subheader("Pilih Data yang Akan Diubah")
             search_query = st.text_input("Cari Berdasarkan Nama atau No Registrasi")
-            
             if search_query:
                 filtered_df = df[df.apply(lambda row: search_query.lower() in row.astype(str).str.lower().values, axis=1)]
                 if not filtered_df.empty:
                     selected_reg = st.selectbox("Pilih No Registrasi untuk Diedit", filtered_df['No. Registrasi'].values)
                     row_index = df.index[df['No. Registrasi'] == selected_reg].tolist()[0] + 2
                     current_values = sheet.row_values(row_index)
-
                     with st.form("edit_form"):
-                        st.info(f"Mengedit Data: {selected_reg}")
-                        new_data = []
-                        for i, col_name in enumerate(headers):
-                            val = st.text_input(f"{col_name}", value=current_values[i] if i < len(current_values) else "")
-                            new_data.append(val)
-                        
-                        btn_update = st.form_submit_button("💾 Simpan Perubahan")
-                        if btn_update:
+                        new_data = [st.text_input(f"{h}", value=current_values[i] if i < len(current_values) else "") for i, h in enumerate(headers)]
+                        if st.form_submit_button("💾 Simpan Perubahan"):
                             sheet.update(f"A{row_index}", [new_data])
-                            st.success("✅ Data berhasil diperbarui!")
-                            st.rerun()
-                else:
-                    st.warning("Data tidak ditemukan.")
-    except Exception as e:
-        st.error(f"Gagal memuat database: {e}")
+                            st.success("✅ Data diperbarui!"); st.rerun()
+                else: st.warning("Data tidak ditemukan.")
+    except Exception as e: st.error(f"Gagal: {e}")
