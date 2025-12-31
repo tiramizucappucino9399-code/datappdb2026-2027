@@ -76,6 +76,10 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
+# Inisialisasi session state untuk galeri foto agar bisa diakses antar halaman
+if 'temp_gallery' not in st.session_state:
+    st.session_state['temp_gallery'] = []
+
 # --- SIDEBAR NAVIGASI ---
 with st.sidebar:
     if LOGO_BASE64:
@@ -129,6 +133,15 @@ if menu == "🏠 Profil Sekolah":
             <tr><td class="label-emis">KODE POS</td><td>: {INFO_LEMBAGA['Kode Pos']}</td></tr>
         </table>
         """, unsafe_allow_html=True)
+    
+    # --- TAMBAHAN: MENAMPILKAN FOTO DARI GALERI DI HALAMAN PROFIL ---
+    if st.session_state['temp_gallery']:
+        st.markdown('<br><div class="section-title">DOKUMENTASI KEGIATAN TERBARU</div>', unsafe_allow_html=True)
+        cols_profile = st.columns(4) # Tampilan lebih kecil (4 kolom) untuk profil
+        for idx, img_b64 in enumerate(st.session_state['temp_gallery']):
+            with cols_profile[idx % 4]:
+                st.image(f"data:image/png;base64,{img_b64}", use_container_width=True)
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 elif menu == "📝 Pendaftaran Siswa Baru":
@@ -210,15 +223,9 @@ elif menu == "📝 Pendaftaran Siswa Baru":
                 except Exception as e:
                     st.error(f"Terjadi kesalahan: {e}")
 
-# --- TAMBAHAN FITUR: MODUL GALERI DENGAN UPLOAD ---
 elif menu == "📸 Galeri Sekolah":
     st.markdown('<div class="section-title">📸 GALERI KEGIATAN SISWA & GURU</div>', unsafe_allow_html=True)
     
-    # Inisialisasi session state untuk menyimpan daftar foto sementara
-    if 'temp_gallery' not in st.session_state:
-        st.session_state['temp_gallery'] = []
-
-    # UI Upload Foto (Hanya tampil jika Admin login atau bisa diatur publik)
     st.markdown("##### 📤 Tambah Foto Baru")
     uploaded_files = st.file_uploader("Pilih foto kegiatan (JPG/PNG)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
     
@@ -226,23 +233,21 @@ elif menu == "📸 Galeri Sekolah":
         if uploaded_files:
             for uploaded_file in uploaded_files:
                 bytes_data = uploaded_file.getvalue()
-                # Encode ke Base64 agar bisa ditampilkan langsung
                 encoded = base64.b64encode(bytes_data).decode()
                 st.session_state['temp_gallery'].append(encoded)
-            st.success(f"Berhasil mengunggah {len(uploaded_files)} foto ke sesi ini.")
+            st.success(f"Berhasil mengunggah {len(uploaded_files)} foto.")
         else:
             st.warning("Silakan pilih file terlebih dahulu.")
 
     st.markdown("---")
     
-    # Menampilkan Foto dalam Grid
     if st.session_state['temp_gallery']:
-        cols = st.columns(3) # Membuat 3 kolom
+        cols = st.columns(3)
         for index, img_data in enumerate(st.session_state['temp_gallery']):
             with cols[index % 3]:
                 st.image(f"data:image/png;base64,{img_data}", use_container_width=True)
     else:
-        st.info("Belum ada foto yang diunggah di sesi ini. Silakan unggah foto kegiatan sekolah di atas.")
+        st.info("Belum ada foto yang diunggah. Silakan unggah foto di atas.")
 
 elif menu == "🔐 Panel Admin":
     if "auth" not in st.session_state: st.session_state.auth = False
@@ -278,7 +283,6 @@ elif menu == "🔐 Panel Admin":
             
             if search_query:
                 filtered_df = df[df.apply(lambda row: search_query.lower() in row.astype(str).str.lower().values, axis=1)]
-                
                 if not filtered_df.empty:
                     selected_reg = st.selectbox("Pilih No Registrasi untuk Diedit", filtered_df['No. Registrasi'].values)
                     row_index = df.index[df['No. Registrasi'] == selected_reg].tolist()[0] + 2
@@ -292,7 +296,6 @@ elif menu == "🔐 Panel Admin":
                             new_data.append(val)
                         
                         btn_update = st.form_submit_button("💾 Simpan Perubahan")
-                        
                         if btn_update:
                             sheet.update(f"A{row_index}", [new_data])
                             st.success("✅ Data berhasil diperbarui!")
