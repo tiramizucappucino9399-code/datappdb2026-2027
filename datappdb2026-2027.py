@@ -72,7 +72,6 @@ st.markdown(f"""
     .emis-table td {{ padding: 10px 5px; border-bottom: 1px solid #F1F5F9; }}
     .label-emis {{ color: #64748B; font-weight: 500; width: 180px; }}
     .section-title {{ background-color: #F8FAFC; padding: 12px; font-weight: bold; border-bottom: 2px solid #E2E8F0; margin-bottom: 15px; color: #0284C7; }}
-    /* Form Styling */
     .stForm {{ background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #E2E8F0; }}
     </style>
 """, unsafe_allow_html=True)
@@ -94,7 +93,6 @@ client = init_google_sheets()
 
 # --- LOGIKA HALAMAN ---
 
-# MODUL 0: PROFIL SEKOLAH (SESUAI GAMBAR EMIS)
 if menu == "🏠 Profil Sekolah":
     st.markdown(f"""
     <div class="header-box">
@@ -133,12 +131,10 @@ if menu == "🏠 Profil Sekolah":
         """, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# MODUL 1: PENDAFTARAN (37 KOLOM LENGKAP SESUAI KODE AWAL)
 elif menu == "📝 Pendaftaran Siswa Baru":
     st.markdown('<h3 style="color: #0284C7;">Formulir Pendaftaran Peserta Didik Baru</h3>', unsafe_allow_html=True)
     
     with st.form("ppdb_full_form", clear_on_submit=True):
-        # --- BAGIAN 1: DATA PERSONAL SISWA ---
         st.markdown("##### I. IDENTITAS PESERTA DIDIK")
         c1, c2 = st.columns(2)
         nama = c1.text_input("Nama Lengkap Siswa*")
@@ -156,7 +152,6 @@ elif menu == "📝 Pendaftaran Siswa Baru":
         nama_kepala_kk = c1.text_input("Nama Kepala Keluarga di KK")
         no_wa = c2.text_input("Nomor WhatsApp Wali (Contoh: 08123...)*")
 
-        # --- BAGIAN 2: DATA ORANG TUA (AYAH & IBU) ---
         st.markdown("<br>##### II. DATA ORANG TUA KANDUNG", unsafe_allow_html=True)
         tab_ayah, tab_ibu = st.tabs(["Data Ayah", "Data Ibu"])
         
@@ -180,7 +175,6 @@ elif menu == "📝 Pendaftaran Siswa Baru":
             pek_ibu = ib2.text_input("Pekerjaan Ibu")
             gaji_ibu = st.selectbox("Penghasilan Bulanan Ibu", ["< 1 Juta", "1 - 3 Juta", "3 - 5 Juta", "> 5 Juta"])
 
-        # --- BAGIAN 3: DATA ALAMAT ---
         st.markdown("<br>##### III. DATA DOMISILI / ALAMAT", unsafe_allow_html=True)
         status_rumah = st.selectbox("Status Tempat Tinggal", ["Milik Sendiri", "Rumah Orang Tua", "Sewa/Kontrak", "Lainnya"])
         al1, al2 = st.columns(2)
@@ -191,7 +185,6 @@ elif menu == "📝 Pendaftaran Siswa Baru":
         alamat_lengkap = st.text_area("Alamat Lengkap (Jalan, RT/RW, No. Rumah)")
         kode_pos = st.text_input("Kode Pos")
 
-        # --- TOMBOL SUBMIT ---
         submit = st.form_submit_button("KIRIM DATA PENDAFTARAN")
         
         if submit:
@@ -200,8 +193,6 @@ elif menu == "📝 Pendaftaran Siswa Baru":
                     sheet = client.open(SHEET_NAME).sheet1
                     reg_id = f"REG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                     wa_fix = no_wa.replace("08", "628", 1) if no_wa.startswith("08") else no_wa
-                    
-                    # PROSES PENYIMPANAN 37 KOLOM SECARA AKURAT
                     row_data = [
                         reg_id, nama, nisn, nis_lokal, kewarganegaraan, f"'{nik_siswa}", 
                         str(tgl_lahir), tmp_lahir, jk, jml_saudara, anak_ke, 
@@ -211,20 +202,14 @@ elif menu == "📝 Pendaftaran Siswa Baru":
                         status_rumah, provinsi, kabupaten, kecamatan, kelurahan, alamat_lengkap, kode_pos,
                         datetime.now().strftime("%Y-%m-%d"), "Belum Diverifikasi"
                     ]
-                    
                     sheet.append_row(row_data)
                     st.success(f"✅ Data pendaftaran {nama} berhasil dikirim!")
-                    
-                    # Integrasi WhatsApp
-                    pesan_wa = urllib.parse.quote(f"Assalamu'alaikum, Saya wali murid dari {nama}. Saya sudah mengisi formulir pendaftaran online dengan No. Registrasi: {reg_id}. Mohon arahannya selanjutnya. Terima kasih.")
+                    pesan_wa = urllib.parse.quote(f"Assalamu'alaikum, Saya wali murid dari {nama}. No Reg: {reg_id}")
                     wa_url = f"https://wa.me/{wa_fix}?text={pesan_wa}"
                     st.markdown(f'<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;">📲 Konfirmasi via WhatsApp</button></a>', unsafe_allow_html=True)
                 except Exception as e:
-                    st.error(f"Terjadi kesalahan saat menyimpan data: {e}")
-            else:
-                st.warning("⚠️ Mohon isi semua kolom yang wajib (tanda *).")
+                    st.error(f"Terjadi kesalahan: {e}")
 
-# --- MODUL LAINNYA ---
 elif menu == "📸 Galeri Sekolah":
     st.markdown('<div class="section-title">GALERI KEGIATAN SISWA & GURU</div>', unsafe_allow_html=True)
     st.info("Halaman ini akan menampilkan dokumentasi kegiatan RA AL IRSYAD.")
@@ -242,6 +227,50 @@ elif menu == "🔐 Panel Admin":
         st.stop()
     
     st.markdown('<div class="section-title">DATABASE PENDAFTAR (ADMIN)</div>', unsafe_allow_html=True)
-    sheet = client.open(SHEET_NAME).sheet1
-    df = pd.DataFrame(sheet.get_all_records()).astype(str)
-    st.dataframe(df, use_container_width=True)
+    
+    try:
+        sheet = client.open(SHEET_NAME).sheet1
+        all_data = sheet.get_all_values()
+        headers = all_data[0]
+        rows = all_data[1:]
+        df = pd.DataFrame(rows, columns=headers)
+
+        tab_view, tab_edit = st.tabs(["🔍 Lihat Data", "✏️ Edit/Perbarui Data"])
+
+        with tab_view:
+            st.dataframe(df, use_container_width=True)
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Ekspor CSV", csv, "Data_PPDB.csv", "text/csv")
+
+        with tab_edit:
+            st.subheader("Pilih Data yang Akan Diubah")
+            search_query = st.text_input("Cari Berdasarkan Nama atau No Registrasi")
+            
+            if search_query:
+                filtered_df = df[df.apply(lambda row: search_query.lower() in row.astype(str).str.lower().values, axis=1)]
+                
+                if not filtered_df.empty:
+                    selected_reg = st.selectbox("Pilih No Registrasi untuk Diedit", filtered_df['No. Registrasi'].values)
+                    # Ambil indeks baris (tambah 2 karena gspread mulai dari 1 dan ada header)
+                    row_index = df.index[df['No. Registrasi'] == selected_reg].tolist()[0] + 2
+                    current_values = sheet.row_values(row_index)
+
+                    with st.form("edit_form"):
+                        st.info(f"Mengedit Data: {selected_reg}")
+                        new_data = []
+                        # Buat input untuk setiap kolom
+                        for i, col_name in enumerate(headers):
+                            # Jika No Registrasi atau Tanggal Daftar, biarkan saja (read-only di pikiran)
+                            val = st.text_input(f"{col_name}", value=current_values[i] if i < len(current_values) else "")
+                            new_data.append(val)
+                        
+                        btn_update = st.form_submit_button("💾 Simpan Perubahan")
+                        
+                        if btn_update:
+                            sheet.update(f"A{row_index}", [new_data])
+                            st.success("✅ Data berhasil diperbarui!")
+                            st.rerun()
+                else:
+                    st.warning("Data tidak ditemukan.")
+    except Exception as e:
+        st.error(f"Gagal memuat database: {e}")
